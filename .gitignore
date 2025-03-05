@@ -1,5 +1,4 @@
 .env
-*.properties
 # Maven
 target/
 pom.xml.tag
@@ -64,3 +63,4 @@ Thumbs.db
 *~
 *.swp
 *.bak
+db.properties
