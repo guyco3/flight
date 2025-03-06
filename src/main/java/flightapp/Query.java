@@ -33,6 +33,10 @@ public class Query extends QueryAbstract {
   public void clearTables() {
     try {
       // TODO: YOUR CODE HERE
+      PreparedStatement clearStatement = conn.prepareStatement(
+         "TRUNCATE TABLE USERS, RESERVATIONS, RESERVATION_ITINERARIES CASCADE"
+      );
+      clearStatement.executeUpdate(); // might want to keep check some stuff here
     } catch (Exception e) {
       e.printStackTrace();
     }
