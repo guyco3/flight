@@ -36,18 +36,18 @@ create table WEEKDAYS(did int primary key,
          day_of_week varchar(9));
 
 
-create table USERS(username text primary key,
+create table USERS_gcohen3(username text primary key,
                 password bytea,
                 balance int
 );
 
-create table RESERVATIONS(
+create table RESERVATIONS_gcohen3(
         rid text primary key,
         username text REFERENCES USERS,
         paid int
 );
 
-create table RESERVATION_INFO(
+create table RESERVATION_INFO_gcohen3(
         rid text REFERENCES RESERVATIONS,
         fid int REFERENCES FLIGHTS
 );
