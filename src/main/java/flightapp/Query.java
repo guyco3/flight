@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
 /**
  * Runs queries against a back-end database
@@ -61,13 +62,17 @@ public class Query extends QueryAbstract {
     try {
 
       PreparedStatement isUniqueStatement = conn.prepareStatement(
-         "SELECT 1 FROM USERS WHERE username = ? AND password = ?"
+         "SELECT password FROM USERS WHERE username = ?"
       );
       isUniqueStatement.clearParameters();  
       isUniqueStatement.setString(1, username.toLowerCase());
-      isUniqueStatement.setBytes(2, hashedPassword);
       ResultSet res = isUniqueStatement.executeQuery(); // might want to keep check some stuff here
-      if (!res.next()) return "Login failed\n"; 
+
+      // no user with username <username>
+      if (!res.next()) return "Login failed\n";
+
+      // check if passwords match
+      if (!PasswordUtils.plaintextMatchesSaltedHash(password, res.getBytes(1))) return "Login failed\n";
       
     } catch (Exception e) {
       e.printStackTrace();
