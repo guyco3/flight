@@ -34,3 +34,20 @@ create table MONTHS(mid int primary key,
 
 create table WEEKDAYS(did int primary key,
          day_of_week varchar(9));
+
+
+create table USERS(username text primary key,
+                password bytea,
+                balance int
+);
+
+create table RESERVATIONS(
+        rid text primary key,
+        username text REFERENCES USERS,
+        paid int
+);
+
+create table RESERVATION_INFO(
+        rid text REFERENCES RESERVATIONS,
+        fid int REFERENCES FLIGHTS
+);

@@ -22,7 +22,6 @@ public class PasswordUtils {
   public static byte[] saltAndHashPassword(String password) {
     byte[] salt = generateSalt();
     byte[] saltedHash = hashWithSalt(password, salt);
-
     // TODO: combine the salt and the salted hash into a single byte array that
     // can be written to the database
     return null;
