@@ -15,13 +15,14 @@ public class Query extends QueryAbstract {
   //
   private static final String FLIGHT_CAPACITY_SQL = "SELECT capacity FROM Flights WHERE fid = ?";
   private PreparedStatement flightCapacityStmt;
+  private static final String CREATE_USER_F = "Failed to create user\n";
 
   //
   // Instance variables
   //
 
-
   protected Query() throws SQLException, IOException {
+    this.isLoggedIn = false;
     prepareStatements();
   }
 
@@ -54,13 +55,69 @@ public class Query extends QueryAbstract {
   /* See QueryAbstract.java for javadoc */
   public String transaction_login(String username, String password) {
     // TODO: YOUR CODE HERE
-    return "Login failed\n";
+    if (this.isLoggedIn) return "User already logged in\n";
+
+    byte[] hashedPassword = PasswordUtils.saltAndHashPassword(password);
+    try {
+
+      PreparedStatement isUniqueStatement = conn.prepareStatement(
+         "SELECT 1 FROM USERS WHERE username = ? AND password = ?"
+      );
+      isUniqueStatement.clearParameters();  
+      isUniqueStatement.setString(1, username.toLowerCase());
+      isUniqueStatement.setBytes(2, hashedPassword);
+      ResultSet res = isUniqueStatement.executeQuery(); // might want to keep check some stuff here
+      if (!res.next()) return "Login failed\n"; 
+      
+    } catch (Exception e) {
+      e.printStackTrace();
+      return CREATE_USER_F;
+    }
+    this.isLoggedIn = true;
+    return "Logged in as " + username + "\n";
   }
 
   /* See QueryAbstract.java for javadoc */
   public String transaction_createCustomer(String username, String password, int initAmount) {
     // TODO: YOUR CODE HERE
-    return "Failed to create user\n";
+
+    if (initAmount < 0) return CREATE_USER_F;
+
+    try {
+
+      PreparedStatement isUniqueStatement = conn.prepareStatement(
+         "SELECT 1 FROM USERS WHERE username = ?"
+      );
+      isUniqueStatement.clearParameters();  
+      isUniqueStatement.setString(1, username.toLowerCase());
+      ResultSet res = isUniqueStatement.executeQuery(); // might want to keep check some stuff here
+      if (res.next()) return CREATE_USER_F;
+      
+    } catch (Exception e) {
+      e.printStackTrace();
+      return CREATE_USER_F;
+    }
+
+    byte[] hashedPassword = PasswordUtils.saltAndHashPassword(password);
+
+    try {
+
+      PreparedStatement clearStatement = conn.prepareStatement(
+         "INSERT INTO USERS VALUES(?, ?, ?)"
+      );
+      clearStatement.clearParameters();
+      clearStatement.setString(1,username.toLowerCase());
+      clearStatement.setBytes(2, hashedPassword);
+      clearStatement.setInt(3, initAmount);
+      clearStatement.executeUpdate(); // might want to keep check some stuff here
+      this.isLoggedIn = true;
+      return "Created user " + username.toLowerCase() + "\n";
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return CREATE_USER_F;
+
   }
 
   /* See QueryAbstract.java for javadoc */

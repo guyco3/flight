@@ -6,6 +6,7 @@ import java.sql.*;
 public abstract class QueryAbstract {
   // DB Connection
   protected Connection conn;
+  protected boolean isLoggedIn;
 
   // For checking for dangling transactions
   private static final String TRANCOUNT_SQL = "SELECT COUNT(*) AS tran_count FROM pg_stat_activity " +
