@@ -43,14 +43,12 @@ public class PasswordUtils {
     // saltAndHashPassword), then use it to check whether the user-provided plaintext
     // password matches the password hash.
     byte[] salt = new byte[SALT_LENGTH_BYTES];
-    for (int i = SALT_LENGTH_BYTES - 1; i >= 0; i++) {
-      salt[i] = saltedHashed[saltedHashed.length - i];
+    for (int i = 0; i < SALT_LENGTH_BYTES; i++) {
+      salt[i] = saltedHashed[i + (saltedHashed.length - SALT_LENGTH_BYTES)];
     }
     byte[] pass = hashWithSalt(plaintext, salt);
 
-    if (pass.length != saltedHashed.length) return false;
-
-    for (int i = 0; i < saltedHashed.length; i++) {
+    for (int i = 0; i < pass.length; i++) {
       if (pass[i] != saltedHashed[i]) return false;
     }
     return true;
