@@ -136,18 +136,18 @@ public class Query extends QueryAbstract {
     // TODO: YOUR CODE HERE
 
     StringBuffer sb = new StringBuffer();
+    int resCounts = 0;
 
     try {
-      // one hop itineraries
-      String unsafeSearchSQL = "SELECT TOP (" + numberOfItineraries
-        + ") day_of_month,carrier_id,flight_num,origin_city,dest_city,actual_time,capacity,price "
-        + "FROM Flights " + "WHERE origin_city = \'" + originCity + "\' AND dest_city = \'"
-        + destinationCity + "\' AND day_of_month =  " + dayOfMonth + " "
-        + "ORDER BY actual_time ASC";
-
-      Statement searchStatement = conn.createStatement();
-      ResultSet oneHopResults = searchStatement.executeQuery(unsafeSearchSQL);
-
+      PreparedStatement searchStatementDirect = conn.prepareStatement(
+        "SELECT TOP (?) day_of_month,carrier_id,flight_num,origin_city,dest_city,actual_time,capacity,price FROM FLIGHTS WHERE WHERE origin_city = ? AND dest_city ? AND day_of_month = ? ORDER BY actual_time ASC, fid ASC"
+      );
+      searchStatementDirect.clearParameters();
+      searchStatementDirect.setInt(1, numberOfItineraries);
+      searchStatementDirect.setString(2, originCity);
+      searchStatementDirect.setString(3, destinationCity);
+      searchStatementDirect.setInt(4, dayOfMonth);
+      ResultSet oneHopResults = searchStatementDirect.executeQuery();
       while (oneHopResults.next()) {
         int result_dayOfMonth = oneHopResults.getInt("day_of_month");
         String result_carrierId = oneHopResults.getString("carrier_id");
@@ -158,16 +158,60 @@ public class Query extends QueryAbstract {
         int result_capacity = oneHopResults.getInt("capacity");
         int result_price = oneHopResults.getInt("price");
 
+        // header with itinerary id info
+        sb.append("Itinerary " + resCounts + ": 1 flight(s), " + result_time + " minutes\n");
+        // content
         sb.append("Day: " + result_dayOfMonth + " Carrier: " + result_carrierId + " Number: "
                   + result_flightNum + " Origin: " + result_originCity + " Destination: "
                   + result_destCity + " Duration: " + result_time + " Capacity: " + result_capacity
                   + " Price: " + result_price + "\n");
+        resCounts++;
       }
-      oneHopResults.close();
-    } catch (SQLException e) {
+
+      PreparedStatement searchStatementIndirect = conn.prepareStatement(
+        "SELECT TOP (?) f1.day_of_month, f1.carrier_id, f2.carrier_id, f1.flight_num, f2.flight_num, f1.origin_city, f2.dest_city, f1.actual_time, f2.actual_time, f1.capacity, f2.capacity, f1.price, f2.price FROM FLIGHTS f1, FLIGHTS f2 WHERE WHERE f1.origin_city = ? AND f2.dest_city ? AND f1.dest_city = f2.origin_city AND f1.day_of_month = ? AND f1.day_of_month = f2.day_of_month ORDER BY actual_time ASC, f1.fid ASC, f2.fid ASC"
+      );
+      searchStatementIndirect.clearParameters();
+      searchStatementIndirect.setInt(1, numberOfItineraries - resCounts);
+      searchStatementIndirect.setString(2, originCity);
+      searchStatementIndirect.setString(3, destinationCity);
+      searchStatementIndirect.setInt(4, dayOfMonth);
+      ResultSet twoHopResults = searchStatementIndirect.executeQuery();
+      while (twoHopResults.next()) {
+        int result_dayOfMonth = oneHopResults.getInt("f1.day_of_month");
+        String result_carrierId1 = oneHopResults.getString("f1.carrier_id");
+        String result_carrierId2 = oneHopResults.getString("f2.carrier_id");
+        String result_flightNum1 = oneHopResults.getString("f1.flight_num");
+        String result_flightNum2 = oneHopResults.getString("f2.flight_num");
+        String result_originCity = oneHopResults.getString("f1.origin_city");
+        String result_destCity = oneHopResults.getString("f2.dest_city");
+        int result_time1 = oneHopResults.getInt("f1.actual_time");
+        int result_time2 = oneHopResults.getInt("f2.actual_time");
+        int result_capacity1 = oneHopResults.getInt("f1.capacity");
+        int result_capacity2 = oneHopResults.getInt("f2.capacity");
+        int result_price1 = oneHopResults.getInt("f1.price");
+        int result_price2 = oneHopResults.getInt("f2.price");
+
+        // header with itinerary id info
+        sb.append("Itinerary " + resCounts + ": 2 flight(s), " + result_time1 + result_time2 + " minutes\n");
+        // content
+        sb.append("Day: " + result_dayOfMonth + " Carrier: " + result_carrierId1 + " Number: "
+                  + result_flightNum1 + " Origin: " + result_originCity + " Destination: "
+                  + result_destCity + " Duration: " + result_time1 + " Capacity: " + result_capacity1
+                  + " Price: " + result_price1 + "\n");
+        sb.append("Day: " + result_dayOfMonth + " Carrier: " + result_carrierId2 + " Number: "
+                  + result_flightNum2 + " Origin: " + result_originCity + " Destination: "
+                  + result_destCity + " Duration: " + result_time2 + " Capacity: " + result_capacity2
+                  + " Price: " + result_price2 + "\n");
+        resCounts++;
+      }
+    } catch (Exception e) {
       e.printStackTrace();
+      return "Failed to search\n";
     }
 
+    if (resCounts == 0) return "No flights match your selection\n";
+    
     return sb.toString();
   }
 
