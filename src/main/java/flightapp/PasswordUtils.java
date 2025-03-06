@@ -1,6 +1,7 @@
 package flightapp;
 
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.sql.Connection;
@@ -24,7 +25,14 @@ public class PasswordUtils {
     byte[] saltedHash = hashWithSalt(password, salt);
     // TODO: combine the salt and the salted hash into a single byte array that
     // can be written to the database
-    return null;
+    byte[] result = new byte[saltedHash.length + salt.length];
+    for (int i = 0; i < saltedHash.length; i++) {
+      result[i] = saltedHash[i];
+    }
+    for (int i = 0; i < salt.length; i++) {
+      result[i + saltedHash.length] = salt[i];
+    }
+    return result;
   }
 
   /**
@@ -34,7 +42,18 @@ public class PasswordUtils {
     // TODO: extract the salt from the byte array (ie, undo the logic you implemented in 
     // saltAndHashPassword), then use it to check whether the user-provided plaintext
     // password matches the password hash.
-    return false;
+    byte[] salt = new byte[SALT_LENGTH_BYTES];
+    for (int i = SALT_LENGTH_BYTES - 1; i >= 0; i++) {
+      salt[i] = saltedHashed[saltedHashed.length - i];
+    }
+    byte[] pass = hashWithSalt(plaintext, salt);
+
+    if (pass.length != saltedHashed.length) return false;
+
+    for (int i = 0; i < saltedHashed.length; i++) {
+      if (pass[i] != saltedHashed[i]) return false;
+    }
+    return true;
   }
   
   // Password hashing parameter constants.
@@ -48,6 +67,8 @@ public class PasswordUtils {
   static byte[] generateSalt() {
     // TODO: implement this.
     byte[] salt = new byte[SALT_LENGTH_BYTES];
+    SecureRandom random = new SecureRandom();
+    random.nextBytes(salt);
     return salt;
   }
 
