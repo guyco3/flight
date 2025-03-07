@@ -43,11 +43,11 @@ create table USERS_gcohen3(username text primary key,
 
 create table RESERVATIONS_gcohen3(
         rid text primary key,
-        username text REFERENCES USERS,
+        username text REFERENCES USERS_gcohen3,
         paid int
 );
 
 create table RESERVATION_INFO_gcohen3(
-        rid text REFERENCES RESERVATIONS,
+        rid text REFERENCES RESERVATIONS_gcohen3,
         fid int REFERENCES FLIGHTS
 );
