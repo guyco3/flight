@@ -1,0 +1,15 @@
+# Verify that a user cannot log in with the wrong password and that that doens't break later logins
+
+# commands to execute:
+create user1 user1 10
+login user1 wrongPassword
+login user1 user1
+quit
+*
+
+# expected output:
+Created user user1
+Login failed
+Logged in as user1
+Goodbye
+*

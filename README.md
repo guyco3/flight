@@ -17,7 +17,6 @@ Replace the placeholders (enclosed in <>) with your specific configuration detai
     $ mvn compile exec:java
 
 # Testing
-    flights % search "Seattle WA" "Boston MA" 0 5 3
     flights % mvn test -Dtest.cases="cases/no_transaction/search"
     flights % mvn test -Dtest.cases="cases/no_transaction/login"
     flights % mvn test -Dtest.cases="cases/no_transaction/create"

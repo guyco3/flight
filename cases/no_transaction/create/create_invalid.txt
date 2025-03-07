@@ -1,0 +1,11 @@
+# Verify we dont create invalid user
+
+# commands to execute:
+create user1 user1 -1
+quit
+*
+
+# expected output from those commands:
+Failed to create user
+Goodbye
+*
