@@ -36,7 +36,7 @@ public class Query extends QueryAbstract {
     try {
       // TODO: YOUR CODE HERE
       PreparedStatement clearStatement = conn.prepareStatement(
-         "TRUNCATE TABLE USERS, RESERVATIONS, RESERVATION_ITINERARIES CASCADE"
+         "TRUNCATE TABLE USERS, RESERVATIONS, RESERVATION_INFO CASCADE"
       );
       clearStatement.executeUpdate(); // might want to keep check some stuff here
     } catch (Exception e) {
