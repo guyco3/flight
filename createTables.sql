@@ -51,3 +51,4 @@ create table RESERVATION_INFO_gcohen3(
         rid text REFERENCES RESERVATIONS_gcohen3,
         fid int REFERENCES FLIGHTS
 );
+
