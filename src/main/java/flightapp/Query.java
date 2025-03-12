@@ -36,7 +36,7 @@ public class Query extends QueryAbstract {
     try {
       // TODO: YOUR CODE HERE
       PreparedStatement clearStatement = conn.prepareStatement(
-         "TRUNCATE TABLE USERS, RESERVATIONS, RESERVATION_INFO CASCADE"
+         "TRUNCATE TABLE USERS_gcohen3, RESERVATIONS_gcohen3, RESERVATION_INFO_gcohen3 CASCADE"
       );
       clearStatement.executeUpdate(); // might want to keep check some stuff here
     } catch (Exception e) {
@@ -61,7 +61,7 @@ public class Query extends QueryAbstract {
     try {
 
       PreparedStatement isUniqueStatement = conn.prepareStatement(
-         "SELECT password FROM USERS WHERE username = ?"
+         "SELECT password FROM USERS_gcohen3 WHERE username = ?"
       );
       isUniqueStatement.clearParameters();  
       isUniqueStatement.setString(1, username.toLowerCase());
@@ -90,7 +90,7 @@ public class Query extends QueryAbstract {
     try {
 
       PreparedStatement isUniqueStatement = conn.prepareStatement(
-         "SELECT 1 FROM USERS WHERE username = ?"
+         "SELECT 1 FROM USERS_gcohen3 WHERE username = ?"
       );
       isUniqueStatement.clearParameters();  
       isUniqueStatement.setString(1, username.toLowerCase());
@@ -107,7 +107,7 @@ public class Query extends QueryAbstract {
     try {
 
       PreparedStatement clearStatement = conn.prepareStatement(
-         "INSERT INTO USERS VALUES(?, ?, ?)"
+         "INSERT INTO USERS_gcohen3 VALUES(?, ?, ?)"
       );
       clearStatement.clearParameters();
       clearStatement.setString(1,username.toLowerCase());

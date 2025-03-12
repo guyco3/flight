@@ -1,7 +1,7 @@
 # Verify we dont create invalid user
 
 # commands to execute:
-create user1 user1 -1
+create user1 user1 -10
 quit
 *
 
