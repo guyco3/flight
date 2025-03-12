@@ -11,19 +11,126 @@ import java.util.*;
  * Runs queries against a back-end database
  */
 public class Query extends QueryAbstract {
+
+  
+  public class Itinerary implements Comparable<Itinerary> {
+    private int fid1;
+    private int fid2;
+    private int resultDayOfMonth;
+    private String resultCarrierId1;
+    private String resultCarrierId2;
+    private String resultFlightNum1;
+    private String resultFlightNum2;
+    private String resultOriginCity1;
+    private String resultOriginCity2;
+    private String resultDestCity1;
+    private String resultDestCity2;
+    private int resultTime1;
+    private int resultTime2;
+    private int total_time;
+    private int resultCapacity1;
+    private int resultCapacity2;
+    private int resultPrice1;
+    private int resultPrice2;
+    private int numFlights;
+
+    // Constructor
+    public Itinerary(int fid1, int fid2, int resultDayOfMonth, String resultCarrierId1, String resultCarrierId2,
+                    String resultFlightNum1, String resultFlightNum2, String resultOriginCity1, String resultOriginCity2,
+                    String resultDestCity1, String resultDestCity2, int resultTime1, int resultTime2,
+                    int resultCapacity1, int resultCapacity2, int resultPrice1, int resultPrice2, int numFlights) {
+        this.fid1 = fid1;
+        this.fid2 = fid2;
+        this.resultDayOfMonth = resultDayOfMonth;
+        this.resultCarrierId1 = resultCarrierId1;
+        this.resultCarrierId2 = resultCarrierId2;
+        this.resultFlightNum1 = resultFlightNum1;
+        this.resultFlightNum2 = resultFlightNum2;
+        this.resultOriginCity1 = resultOriginCity1;
+        this.resultOriginCity2 = resultOriginCity2;
+        this.resultDestCity1 = resultDestCity1;
+        this.resultDestCity2 = resultDestCity2;
+        this.resultTime1 = resultTime1;
+        this.resultTime2 = resultTime2;
+        this.total_time = resultTime1 + resultTime2;
+        this.resultCapacity1 = resultCapacity1;
+        this.resultCapacity2 = resultCapacity2;
+        this.resultPrice1 = resultPrice1;
+        this.resultPrice2 = resultPrice2;
+        this.numFlights = numFlights;
+    }
+
+    // Getters
+    public int getTime() { return total_time; }; 
+    public int getFid1() { return fid1; }
+    public int getFid2() { return fid2; }
+    public int getResultDayOfMonth() { return resultDayOfMonth; }
+    public String getResultCarrierId1() { return resultCarrierId1; }
+    public String getResultCarrierId2() { return resultCarrierId2; }
+    public String getResultFlightNum1() { return resultFlightNum1; }
+    public String getResultFlightNum2() { return resultFlightNum2; }
+    public String getResultOriginCity1() { return resultOriginCity1; }
+    public String getResultOriginCity2() { return resultOriginCity2; }
+    public String getResultDestCity1() { return resultDestCity1; }
+    public String getResultDestCity2() { return resultDestCity2; }
+    public int getResultTime1() { return resultTime1; }
+    public int getResultTime2() { return resultTime2; }
+    public int getResultCapacity1() { return resultCapacity1; }
+    public int getResultCapacity2() { return resultCapacity2; }
+    public int getResultPrice1() { return resultPrice1; }
+    public int getResultPrice2() { return resultPrice2; }
+    public int getNumFlights() { return numFlights; }
+
+    // Implement compareTo method for sorting
+    @Override
+    public int compareTo(Itinerary other) {
+        // Sort by actual time (assuming resultTime1 is the actual time)
+        if (this.resultTime1 != other.resultTime1) {
+            return Integer.compare(this.resultTime1, other.resultTime1);
+        } else if (this.fid1 != other.fid1) {
+            return Integer.compare(this.fid1, other.fid1);
+        } else {
+            return Integer.compare(this.fid2, other.fid2);
+        }
+    }
+
+    // toString method for easy printing
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        // Content
+        sb.append("ID: ").append(fid1).append(" Day: ").append(resultDayOfMonth).append(" Carrier: ")
+          .append(resultCarrierId1).append(" Number: ").append(resultFlightNum1).append(" Origin: ")
+          .append(resultOriginCity1).append(" Dest: ").append(resultDestCity1).append(" Duration: ")
+          .append(resultTime1).append(" Capacity: ").append(resultCapacity1).append(" Price: ")
+          .append(resultPrice1).append("\n");
+        if (numFlights == 2) {              
+            sb.append("ID: ").append(fid2).append(" Day: ").append(resultDayOfMonth).append(" Carrier: ")
+              .append(resultCarrierId2).append(" Number: ").append(resultFlightNum2).append(" Origin: ")
+              .append(resultOriginCity2).append(" Dest: ").append(resultDestCity2).append(" Duration: ")
+              .append(resultTime2).append(" Capacity: ").append(resultCapacity2).append(" Price: ")
+              .append(resultPrice2).append("\n");
+        }
+        return sb.toString();
+    }
+  };
   //
   // Canned queries
   //
   private static final String FLIGHT_CAPACITY_SQL = "SELECT capacity FROM Flights WHERE fid = ?";
   private PreparedStatement flightCapacityStmt;
   private static final String CREATE_USER_F = "Failed to create user\n";
-  protected static boolean isLoggedIn;
+  private static String currentUser;
+  private List<Itinerary> itins;
+  private int RID;
   //
   // Instance variables
   //
 
   protected Query() throws SQLException, IOException {
-    Query.isLoggedIn = false;
+    Query.currentUser = null;
+    RID = 1;
+    itins = new ArrayList<Itinerary>();
     prepareStatements();
   }
 
@@ -56,7 +163,7 @@ public class Query extends QueryAbstract {
   /* See QueryAbstract.java for javadoc */
   public String transaction_login(String username, String password) {
     // TODO: YOUR CODE HERE
-    if (Query.isLoggedIn) return "User already logged in\n";
+    if (Query.currentUser != null) return "User already logged in\n";
 
     try {
 
@@ -77,7 +184,7 @@ public class Query extends QueryAbstract {
       e.printStackTrace();
       return CREATE_USER_F;
     }
-    Query.isLoggedIn = true;
+    Query.currentUser = username;
     return "Logged in as " + username + "\n";
   }
 
@@ -123,110 +230,6 @@ public class Query extends QueryAbstract {
 
   }
 
-  public class Itinerary implements Comparable<Itinerary> {
-      private int fid1;
-      private int fid2;
-      private int resultDayOfMonth;
-      private String resultCarrierId1;
-      private String resultCarrierId2;
-      private String resultFlightNum1;
-      private String resultFlightNum2;
-      private String resultOriginCity1;
-      private String resultOriginCity2;
-      private String resultDestCity1;
-      private String resultDestCity2;
-      private int resultTime1;
-      private int resultTime2;
-      private int total_time;
-      private int resultCapacity1;
-      private int resultCapacity2;
-      private int resultPrice1;
-      private int resultPrice2;
-      private int numFlights;
-
-      // Constructor
-      public Itinerary(int fid1, int fid2, int resultDayOfMonth, String resultCarrierId1, String resultCarrierId2,
-                      String resultFlightNum1, String resultFlightNum2, String resultOriginCity1, String resultOriginCity2,
-                      String resultDestCity1, String resultDestCity2, int resultTime1, int resultTime2,
-                      int resultCapacity1, int resultCapacity2, int resultPrice1, int resultPrice2, int numFlights) {
-          this.fid1 = fid1;
-          this.fid2 = fid2;
-          this.resultDayOfMonth = resultDayOfMonth;
-          this.resultCarrierId1 = resultCarrierId1;
-          this.resultCarrierId2 = resultCarrierId2;
-          this.resultFlightNum1 = resultFlightNum1;
-          this.resultFlightNum2 = resultFlightNum2;
-          this.resultOriginCity1 = resultOriginCity1;
-          this.resultOriginCity2 = resultOriginCity2;
-          this.resultDestCity1 = resultDestCity1;
-          this.resultDestCity2 = resultDestCity2;
-          this.resultTime1 = resultTime1;
-          this.resultTime2 = resultTime2;
-          this.total_time = resultTime1 + resultTime2;
-          this.resultCapacity1 = resultCapacity1;
-          this.resultCapacity2 = resultCapacity2;
-          this.resultPrice1 = resultPrice1;
-          this.resultPrice2 = resultPrice2;
-          this.numFlights = numFlights;
-      }
-
-      // Getters
-      public int getTime() { return total_time; }; 
-      public int getFid1() { return fid1; }
-      public int getFid2() { return fid2; }
-      public int getResultDayOfMonth() { return resultDayOfMonth; }
-      public String getResultCarrierId1() { return resultCarrierId1; }
-      public String getResultCarrierId2() { return resultCarrierId2; }
-      public String getResultFlightNum1() { return resultFlightNum1; }
-      public String getResultFlightNum2() { return resultFlightNum2; }
-      public String getResultOriginCity1() { return resultOriginCity1; }
-      public String getResultOriginCity2() { return resultOriginCity2; }
-      public String getResultDestCity1() { return resultDestCity1; }
-      public String getResultDestCity2() { return resultDestCity2; }
-      public int getResultTime1() { return resultTime1; }
-      public int getResultTime2() { return resultTime2; }
-      public int getResultCapacity1() { return resultCapacity1; }
-      public int getResultCapacity2() { return resultCapacity2; }
-      public int getResultPrice1() { return resultPrice1; }
-      public int getResultPrice2() { return resultPrice2; }
-      public int getNumFlights() { return numFlights; }
-
-      // Implement compareTo method for sorting
-      @Override
-      public int compareTo(Itinerary other) {
-          // Sort by actual time (assuming resultTime1 is the actual time)
-          if (this.resultTime1 != other.resultTime1) {
-              return Integer.compare(this.resultTime1, other.resultTime1);
-          } else if (this.fid1 != other.fid1) {
-              return Integer.compare(this.fid1, other.fid1);
-          } else {
-              return Integer.compare(this.fid2, other.fid2);
-          }
-      }
-
-      // toString method for easy printing
-      @Override
-      public String toString() {
-          StringBuilder sb = new StringBuilder();
-          // Content
-          sb.append("ID: ").append(fid1).append(" Day: ").append(resultDayOfMonth).append(" Carrier: ")
-            .append(resultCarrierId1).append(" Number: ").append(resultFlightNum1).append(" Origin: ")
-            .append(resultOriginCity1).append(" Dest: ").append(resultDestCity1).append(" Duration: ")
-            .append(resultTime1).append(" Capacity: ").append(resultCapacity1).append(" Price: ")
-            .append(resultPrice1).append("\n");
-          if (numFlights == 2) {              
-              sb.append("ID: ").append(fid2).append(" Day: ").append(resultDayOfMonth).append(" Carrier: ")
-                .append(resultCarrierId2).append(" Number: ").append(resultFlightNum2).append(" Origin: ")
-                .append(resultOriginCity2).append(" Dest: ").append(resultDestCity2).append(" Duration: ")
-                .append(resultTime2).append(" Capacity: ").append(resultCapacity2).append(" Price: ")
-                .append(resultPrice2).append("\n");
-          }
-          return sb.toString();
-      }
-
-
-  };
-
   /* See QueryAbstract.java for javadoc */
   public String transaction_search(String originCity, String destinationCity, 
                                    boolean directFlight, int dayOfMonth,
@@ -238,8 +241,6 @@ public class Query extends QueryAbstract {
     // TODO: YOUR CODE HERE
 
     StringBuffer sb = new StringBuffer();
-
-    List<Itinerary> itins = new ArrayList<Itinerary>();
 
     try {
       PreparedStatement searchStatementDirect = conn.prepareStatement(
@@ -349,7 +350,102 @@ public class Query extends QueryAbstract {
   /* See QueryAbstract.java for javadoc */
   public String transaction_book(int itineraryId) {
     // TODO: YOUR CODE HERE
-    return "Booking failed\n";
+    if (currentUser == null) return "Cannot book reservations, not logged in\n";
+
+    if (itins.size() <= itineraryId) return "No such itinerary " + itineraryId + "\n";
+
+    Itinerary itinerary = itins.get(itineraryId);
+
+    Set<Integer> bookedDays = new HashSet<>();
+    try {
+      conn.setAutoCommit(false);
+      PreparedStatement userReservationsStatement = conn.prepareStatement(
+         "WITH (SELECT r.rid as id FROM RESERVATIONS_gcohen3 r INNER JOIN USERS_gcohen3 u ON r.uid = u.username WHERE u.username = ?) as rids SELECT day_of_month FROM RESERVATION_INFO_gcohen3 ri INNER JOIN FLIGHTS f ON rids.id = f.fid;"
+      );
+      userReservationsStatement.clearParameters();  
+      userReservationsStatement.setString(1, currentUser);
+      
+      ResultSet res = userReservationsStatement.executeQuery(); // might want to keep check some stuff here
+      while (res.next()) {
+        bookedDays.add(res.getInt(1));
+      } 
+
+      if (bookedDays.contains(itinerary.resultDayOfMonth)) return "You cannot book two flights in the same day\n";
+
+      // get number of seats for current flight
+      int seatsBookedF1 = 0;
+      int seatsBookedF2 = 0;
+
+      PreparedStatement bookedSeatsStatement = conn.prepareStatement(
+         "SELECT COUNT(rid) FROM RESERVATION_INFO_gcohen3 INNER JOIN FLIGHTS f ON ri.fid = f.fid WHERE fid = ?;"
+      );
+      bookedSeatsStatement.clearParameters();  
+      bookedSeatsStatement.setInt(1, itinerary.fid1);
+      res = bookedSeatsStatement.executeQuery(); // might want to keep check some stuff here
+      while (res.next()) {
+        seatsBookedF1 += res.getInt(1);
+      } 
+      if (itinerary.numFlights > 1) {
+        bookedSeatsStatement.clearParameters();  
+        bookedSeatsStatement.setInt(1, itinerary.fid2);
+        res = bookedSeatsStatement.executeQuery(); // might want to keep check some stuff here
+        while (res.next()) {
+          seatsBookedF2 += res.getInt(1);
+        } 
+      }
+
+      if (itinerary.resultCapacity1 < seatsBookedF1 + 1 || ( itinerary.numFlights > 1 && itinerary.resultCapacity2 < seatsBookedF2 + 1)) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "Booking failed\n";
+      }
+
+      // add reservation
+      PreparedStatement reserveStatement = conn.prepareStatement(
+         "INSERT INTO RESERVATIONS_gcohen3 VALUES (?, ?, ?);"
+      );
+      reserveStatement.clearParameters();  
+      reserveStatement.setInt(1, RID);
+      reserveStatement.setString(2, currentUser);
+      reserveStatement.setInt(3, 0);
+      if(reserveStatement.executeUpdate() == 0){
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "Booking failed\n";
+      }
+
+      // add flights to reservations info
+      PreparedStatement addFlightsStatement = conn.prepareStatement(
+         "INSERT INTO RESERVATION_INFO_gcohen3 VALUES (?, ?);"
+      );
+      addFlightsStatement.clearParameters();  
+      addFlightsStatement.setInt(1, RID);
+      addFlightsStatement.setInt(2, itinerary.fid1);
+      if(addFlightsStatement.executeUpdate() == 0) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "Booking failed\n";
+      }
+
+      if (itinerary.numFlights > 1) {
+        addFlightsStatement.clearParameters();  
+        addFlightsStatement.setInt(1, RID);
+        addFlightsStatement.setInt(2, itinerary.fid2);
+        if(addFlightsStatement.executeUpdate() == 0){
+          conn.rollback(); // Roll back any query executions in transaction thus far
+          conn.setAutoCommit(true); // End the transaction
+          return "Booking failed\n";
+        }
+      }
+      RID++;
+      conn.commit(); // Commit our query executions (make them permanent)
+      conn.setAutoCommit(true); // End the transaction
+      
+    } catch (Exception e) {
+      e.printStackTrace();
+      return "Booking failed\n";
+    }
+    return "Booked flight(s), reservation ID: [reservationId]\n";
   }
 
   /* See QueryAbstract.java for javadoc */
