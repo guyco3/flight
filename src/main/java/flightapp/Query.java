@@ -122,14 +122,12 @@ public class Query extends QueryAbstract {
   private static final String CREATE_USER_F = "Failed to create user\n";
   private static String currentUser;
   private List<Itinerary> itins;
-  private int RID;
   //
   // Instance variables
   //
 
   protected Query() throws SQLException, IOException {
     Query.currentUser = null;
-    RID = 1;
     itins = new ArrayList<Itinerary>();
     prepareStatements();
   }
@@ -357,10 +355,20 @@ public class Query extends QueryAbstract {
     Itinerary itinerary = itins.get(itineraryId);
 
     Set<Integer> bookedDays = new HashSet<>();
+    int RID = 1;
+
     try {
       conn.setAutoCommit(false);
       PreparedStatement userReservationsStatement = conn.prepareStatement(
-         "WITH (SELECT r.rid as id FROM RESERVATIONS_gcohen3 r INNER JOIN USERS_gcohen3 u ON r.uid = u.username WHERE u.username = ?) as rids SELECT day_of_month FROM RESERVATION_INFO_gcohen3 ri INNER JOIN FLIGHTS f ON rids.id = f.fid;"
+         "WITH rids AS (SELECT ri.fid "
+    + "    FROM RESERVATIONS_gcohen3 r "
+    + "    INNER JOIN USERS_gcohen3 u ON r.username = u.username "
+    + "    INNER JOIN RESERVATION_INFO_gcohen3 ri ON r.rid = ri.rid "
+    + "    WHERE u.username = ?"
+    + ") "
+    + "SELECT f.day_of_month "
+    + "FROM FLIGHTS f "
+    + "INNER JOIN rids ON f.fid = rids.fid;"
       );
       userReservationsStatement.clearParameters();  
       userReservationsStatement.setString(1, currentUser);
@@ -377,7 +385,7 @@ public class Query extends QueryAbstract {
       int seatsBookedF2 = 0;
 
       PreparedStatement bookedSeatsStatement = conn.prepareStatement(
-         "SELECT COUNT(rid) FROM RESERVATION_INFO_gcohen3 INNER JOIN FLIGHTS f ON ri.fid = f.fid WHERE fid = ?;"
+         "SELECT COUNT(r.rid) FROM RESERVATION_INFO_gcohen3 r INNER JOIN FLIGHTS f ON r.fid = f.fid WHERE f.fid = ?;"
       );
       bookedSeatsStatement.clearParameters();  
       bookedSeatsStatement.setInt(1, itinerary.fid1);
@@ -399,6 +407,14 @@ public class Query extends QueryAbstract {
         conn.setAutoCommit(true); // End the transaction
         return "Booking failed\n";
       }
+
+      // get RID
+      PreparedStatement ridStatement = conn.prepareStatement(
+         "SELECT COUNT(*) FROM RESERVATIONS_gcohen3;"
+      );
+      ridStatement.clearParameters();
+      res = ridStatement.executeQuery();
+      if (res.next())RID += res.getInt(1);
 
       // add reservation
       PreparedStatement reserveStatement = conn.prepareStatement(
@@ -437,7 +453,6 @@ public class Query extends QueryAbstract {
           return "Booking failed\n";
         }
       }
-      RID++;
       conn.commit(); // Commit our query executions (make them permanent)
       conn.setAutoCommit(true); // End the transaction
       
@@ -445,7 +460,7 @@ public class Query extends QueryAbstract {
       e.printStackTrace();
       return "Booking failed\n";
     }
-    return "Booked flight(s), reservation ID: [reservationId]\n";
+    return "Booked flight(s), reservation ID: "+ RID + "\n";
   }
 
   /* See QueryAbstract.java for javadoc */
