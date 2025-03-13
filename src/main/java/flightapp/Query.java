@@ -15,7 +15,7 @@ public class Query extends QueryAbstract {
   //
   // Canned queries
   //
-  private static final String FLIGHT_CAPACITY_SQL = "SELECT capacity FROM Flights WHERE fid = ?";
+  private static final String FLIGHT_CAPACITY_SQL = "SELECT f.capacity AS capacity FROM Flights f INNER JOIN RESERVATION_INFO_gcohen3 r WHERE f.fid = ?";
   private static final String LOGIN_IS_UNIQUE_SQL = "SELECT password FROM USERS_gcohen3 WHERE username = ?";
   private static final String CREATE_IS_UNIQUE_SQL = "SELECT 1 FROM USERS_gcohen3 WHERE username = ?";
   private static final String CREATE_INSERT_SQL = "INSERT INTO USERS_gcohen3 VALUES(?, ?, ?)";
@@ -42,29 +42,31 @@ public class Query extends QueryAbstract {
     "FROM FLIGHTS f1 " +
     "INNER JOIN FLIGHTS f2 ON f1.dest_city = f2.origin_city  AND f1.dest_state = f2.origin_state AND f1.day_of_month = f2.day_of_month  " +
     "WHERE f1.origin_city = ? AND f2.dest_city = ? AND f1.day_of_month = ? AND f1.canceled = 0 AND f2.canceled = 0 ORDER BY duration, fid1, fid2 LIMIT ?";
-  private static final String BOOK_LIST_RESERVATIONS_SQL = "WITH rids AS (SELECT ri.fid "
+  // assuming indirect flights always on same day, if f2 => then f1 must exist
+    private static final String BOOK_LIST_RESERVATIONS_SQL = "WITH rids AS (SELECT ri.fid1 as f1 "
   + "    FROM RESERVATIONS_gcohen3 r "
   + "    INNER JOIN USERS_gcohen3 u ON r.username = u.username "
   + "    INNER JOIN RESERVATION_INFO_gcohen3 ri ON r.rid = ri.rid "
   + "    WHERE u.username = ?"
   + ") "
-  + "SELECT f.day_of_month "
+  + "SELECT DISTINCT f.day_of_month "
   + "FROM FLIGHTS f "
-  + "INNER JOIN rids ON f.fid = rids.fid;";
-  private static final String BOOK_GET_SEATS_SQL = "SELECT COUNT(r.rid) FROM RESERVATION_INFO_gcohen3 r INNER JOIN FLIGHTS f ON r.fid = f.fid WHERE f.fid = ?;";
+  + "INNER JOIN rids ON f.fid = rids.f1";
+  private static final String BOOK_GET_SEATS_F1_SQL = "SELECT COUNT(*) FROM RESERVATION_INFO_gcohen3 r WHERE r.fid1 = ?;";
+  private static final String BOOK_GET_SEATS_F2_SQL = "SELECT COUNT(*) FROM RESERVATION_INFO_gcohen3 r WHERE r.fid2 = ?;";
   private static final String BOOK_GET_RID_SQL = "SELECT COUNT(*) FROM RESERVATIONS_gcohen3;";
   private static final String BOOK_INSERT_R_SQL = "INSERT INTO RESERVATIONS_gcohen3 VALUES (?, ?, ?);";
   private static final String BOOK_INSERT_R_INFO_SQL = "INSERT INTO RESERVATION_INFO_gcohen3 VALUES (?, ?, ?);";
 
   private static final String PAY_GET_BALANCE_SQL = "SELECT balance FROM USERS_gcohen3 WHERE username = ?;";
   private static final String PAY_GET_INFO_SQL = "WITH UNPAID as (SELECT rid FROM RESERVATIONS_gcohen3 WHERE paid = 0 AND username = ? AND rid = ?) " +
-          "SELECT COUNT(r.rid), SUM(f.price) FROM FLIGHTS f INNER JOIN RESERVATION_INFO_gcohen3 r ON r.fid = f.fid " +
+          "SELECT COUNT(r.rid), SUM(f.price) FROM FLIGHTS f INNER JOIN RESERVATION_INFO_gcohen3 r ON (r.fid1 = f.fid OR r.fid2 = f.fid) " +
           "WHERE r.rid IN (SELECT rid FROM UNPAID);";
   private static final String PAY_UPDATE_BALANCE_SQL = "UPDATE USERS_gcohen3 SET balance = ? WHERE username = ?;";
   private static final String PAY_UPDATE_PAID_SQL = "UPDATE RESERVATIONS_gcohen3 SET paid = 1 WHERE rid = ?;";
 
   private static final String RESERVE_GET_R_SQL = "WITH rids as (" +
-    "  SELECT r.rid, r.paid, ri.fid " +
+    "  SELECT r.rid, r.paid, ri.fid1, ri.fid2 " +
     "  FROM RESERVATIONS_gcohen3 r " +
     "  INNER JOIN RESERVATION_INFO_gcohen3 ri " +
     "  ON r.rid = ri.rid " +
@@ -84,7 +86,7 @@ public class Query extends QueryAbstract {
     "  f.price " +
     "FROM FLIGHTS f " +
     "INNER JOIN rids r " +
-    "ON f.fid = r.fid;";
+    "ON (f.fid = r.fid1 OR f.fid = r.fid2);";
  
   private PreparedStatement flightCapacityStmt;
   private PreparedStatement loginIsUniqueStatement;
@@ -93,7 +95,8 @@ public class Query extends QueryAbstract {
   private PreparedStatement searchDirectFlightStatement;
   private PreparedStatement searchIndirectFlightStatement;
   private PreparedStatement bookListReservationStatement;
-  private PreparedStatement bookGetSeatsStatement;
+  private PreparedStatement bookGetSeatsF1Statement;
+  private PreparedStatement bookGetSeatsF2Statement;
   private PreparedStatement bookGetRIDStatement;
   private PreparedStatement bookInsertRStatement;
   private PreparedStatement bookInsertRInfoStatement;
@@ -142,7 +145,8 @@ public class Query extends QueryAbstract {
     searchDirectFlightStatement = conn.prepareStatement(SEARCH_DIRECT_FLIGHTS_SQL);
     searchIndirectFlightStatement = conn.prepareStatement(SEARCH_INDIRECT_FLIGHTS_SQL);
     bookListReservationStatement = conn.prepareStatement(BOOK_LIST_RESERVATIONS_SQL);
-    bookGetSeatsStatement = conn.prepareStatement(BOOK_GET_SEATS_SQL);
+    bookGetSeatsF1Statement = conn.prepareStatement(BOOK_GET_SEATS_F1_SQL);
+    bookGetSeatsF2Statement = conn.prepareStatement(BOOK_GET_SEATS_F2_SQL);
     bookGetRIDStatement = conn.prepareStatement(BOOK_GET_RID_SQL);
     bookInsertRStatement = conn.prepareStatement(BOOK_INSERT_R_SQL);
     bookInsertRInfoStatement = conn.prepareStatement(BOOK_INSERT_R_INFO_SQL);
@@ -313,10 +317,11 @@ public class Query extends QueryAbstract {
 
     try {
       conn.setAutoCommit(false);
+      ResultSet res;
       bookListReservationStatement.clearParameters();  
       bookListReservationStatement.setString(1, currentUser);
       
-      ResultSet res = bookListReservationStatement.executeQuery(); // might want to keep check some stuff here
+      res = bookListReservationStatement.executeQuery(); // might want to keep check some stuff here
       while (res.next()) {
         bookedDays.add(res.getInt(1));
       } 
@@ -330,17 +335,17 @@ public class Query extends QueryAbstract {
       int seatsBookedF1 = 0;
       int seatsBookedF2 = 0;
 
-
-      bookGetSeatsStatement.clearParameters();  
-      bookGetSeatsStatement.setInt(1, itinerary.f1.fid);
-      res = bookGetSeatsStatement.executeQuery(); // might want to keep check some stuff here
+      // error here!
+      bookGetSeatsF1Statement.clearParameters();  
+      bookGetSeatsF1Statement.setInt(1, itinerary.f1.fid);
+      res = bookGetSeatsF1Statement.executeQuery(); // might want to keep check some stuff here
       while (res.next()) {
         seatsBookedF1 += res.getInt(1);
       } 
       if (itinerary.numFlights > 1) {
-        bookGetSeatsStatement.clearParameters();  
-        bookGetSeatsStatement.setInt(1, itinerary.f2.fid);
-        res = bookGetSeatsStatement.executeQuery(); // might want to keep check some stuff here
+        bookGetSeatsF2Statement.clearParameters();  
+        bookGetSeatsF2Statement.setInt(1, itinerary.f2.fid);
+        res = bookGetSeatsF2Statement.executeQuery(); // might want to keep check some stuff here
         while (res.next()) {
           seatsBookedF2 += res.getInt(1);
         } 
@@ -387,9 +392,15 @@ public class Query extends QueryAbstract {
       conn.commit(); // Commit our query executions (make them permanent)
       conn.setAutoCommit(true); // End the transaction
       
-    } catch (SQLException e) {
+    } catch (Exception e) {
+
+      try {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        if (isDeadlock((SQLException) e)) return transaction_book(itineraryId);
+      } catch (SQLException se) {}
       e.printStackTrace();
-      return "Booking failed\n";
+      return "Booking failed in catch\n";
     }
     return "Booked flight(s), reservation ID: "+ RID + "\n";
   }
@@ -503,7 +514,6 @@ public class Query extends QueryAbstract {
         for (Flight flight : tmp) {
           sb.append(flight.toString());
         }
-        sb.append("\n");
       }
       
       conn.commit(); // Commit our query executions (make them permanent)
