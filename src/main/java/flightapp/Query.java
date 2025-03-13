@@ -12,114 +12,96 @@ import java.util.*;
  */
 public class Query extends QueryAbstract {
 
-  
-  public class Itinerary implements Comparable<Itinerary> {
-    private int fid1;
-    private int fid2;
-    private int resultDayOfMonth;
-    private String resultCarrierId1;
-    private String resultCarrierId2;
-    private String resultFlightNum1;
-    private String resultFlightNum2;
-    private String resultOriginCity1;
-    private String resultOriginCity2;
-    private String resultDestCity1;
-    private String resultDestCity2;
-    private int resultTime1;
-    private int resultTime2;
-    private int total_time;
-    private int resultCapacity1;
-    private int resultCapacity2;
-    private int resultPrice1;
-    private int resultPrice2;
-    private int numFlights;
-
-    // Constructor
-    public Itinerary(int fid1, int fid2, int resultDayOfMonth, String resultCarrierId1, String resultCarrierId2,
-                    String resultFlightNum1, String resultFlightNum2, String resultOriginCity1, String resultOriginCity2,
-                    String resultDestCity1, String resultDestCity2, int resultTime1, int resultTime2,
-                    int resultCapacity1, int resultCapacity2, int resultPrice1, int resultPrice2, int numFlights) {
-        this.fid1 = fid1;
-        this.fid2 = fid2;
-        this.resultDayOfMonth = resultDayOfMonth;
-        this.resultCarrierId1 = resultCarrierId1;
-        this.resultCarrierId2 = resultCarrierId2;
-        this.resultFlightNum1 = resultFlightNum1;
-        this.resultFlightNum2 = resultFlightNum2;
-        this.resultOriginCity1 = resultOriginCity1;
-        this.resultOriginCity2 = resultOriginCity2;
-        this.resultDestCity1 = resultDestCity1;
-        this.resultDestCity2 = resultDestCity2;
-        this.resultTime1 = resultTime1;
-        this.resultTime2 = resultTime2;
-        this.total_time = resultTime1 + resultTime2;
-        this.resultCapacity1 = resultCapacity1;
-        this.resultCapacity2 = resultCapacity2;
-        this.resultPrice1 = resultPrice1;
-        this.resultPrice2 = resultPrice2;
-        this.numFlights = numFlights;
-    }
-
-    // Getters
-    public int getTime() { return total_time; }; 
-    public int getFid1() { return fid1; }
-    public int getFid2() { return fid2; }
-    public int getResultDayOfMonth() { return resultDayOfMonth; }
-    public String getResultCarrierId1() { return resultCarrierId1; }
-    public String getResultCarrierId2() { return resultCarrierId2; }
-    public String getResultFlightNum1() { return resultFlightNum1; }
-    public String getResultFlightNum2() { return resultFlightNum2; }
-    public String getResultOriginCity1() { return resultOriginCity1; }
-    public String getResultOriginCity2() { return resultOriginCity2; }
-    public String getResultDestCity1() { return resultDestCity1; }
-    public String getResultDestCity2() { return resultDestCity2; }
-    public int getResultTime1() { return resultTime1; }
-    public int getResultTime2() { return resultTime2; }
-    public int getResultCapacity1() { return resultCapacity1; }
-    public int getResultCapacity2() { return resultCapacity2; }
-    public int getResultPrice1() { return resultPrice1; }
-    public int getResultPrice2() { return resultPrice2; }
-    public int getNumFlights() { return numFlights; }
-
-    // Implement compareTo method for sorting
-    @Override
-    public int compareTo(Itinerary other) {
-        // Sort by actual time (assuming resultTime1 is the actual time)
-        if (this.resultTime1 != other.resultTime1) {
-            return Integer.compare(this.resultTime1, other.resultTime1);
-        } else if (this.fid1 != other.fid1) {
-            return Integer.compare(this.fid1, other.fid1);
-        } else {
-            return Integer.compare(this.fid2, other.fid2);
-        }
-    }
-
-    // toString method for easy printing
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        // Content
-        sb.append("ID: ").append(fid1).append(" Day: ").append(resultDayOfMonth).append(" Carrier: ")
-          .append(resultCarrierId1).append(" Number: ").append(resultFlightNum1).append(" Origin: ")
-          .append(resultOriginCity1).append(" Dest: ").append(resultDestCity1).append(" Duration: ")
-          .append(resultTime1).append(" Capacity: ").append(resultCapacity1).append(" Price: ")
-          .append(resultPrice1).append("\n");
-        if (numFlights == 2) {              
-            sb.append("ID: ").append(fid2).append(" Day: ").append(resultDayOfMonth).append(" Carrier: ")
-              .append(resultCarrierId2).append(" Number: ").append(resultFlightNum2).append(" Origin: ")
-              .append(resultOriginCity2).append(" Dest: ").append(resultDestCity2).append(" Duration: ")
-              .append(resultTime2).append(" Capacity: ").append(resultCapacity2).append(" Price: ")
-              .append(resultPrice2).append("\n");
-        }
-        return sb.toString();
-    }
-  };
   //
   // Canned queries
   //
   private static final String FLIGHT_CAPACITY_SQL = "SELECT capacity FROM Flights WHERE fid = ?";
+  private static final String LOGIN_IS_UNIQUE_SQL = "SELECT password FROM USERS_gcohen3 WHERE username = ?";
+  private static final String CREATE_IS_UNIQUE_SQL = "SELECT 1 FROM USERS_gcohen3 WHERE username = ?";
+  private static final String CREATE_INSERT_SQL = "INSERT INTO USERS_gcohen3 VALUES(?, ?, ?)";
+  private static final String SEARCH_DIRECT_FLIGHTS_SQL = "SELECT * FROM FLIGHTS WHERE origin_city = ? AND dest_city = ? AND day_of_month = ? ORDER BY actual_time ASC, fid ASC LIMIT ?";
+  private static final String SEARCH_INDIRECT_FLIGHTS_SQL = "SELECT " +
+    "    f1.fid AS fid1, " +
+    "    f2.fid AS fid2, " +
+    "    f1.day_of_month AS day, " +
+    "    f1.carrier_id AS carrier1, " +
+    "    f1.flight_num AS number1, " +
+    "    f1.origin_city AS origin, " +
+    "    f1.dest_city AS intermediate, " +
+    "    f2.carrier_id AS carrier2, " +
+    "    f2.flight_num AS number2, " +
+    "    f2.dest_city AS dest, " +
+    "    f1.actual_time AS at1, " +
+    "    f2.actual_time AS at2, " +
+    "    f1.actual_time + f2.actual_time as duration, " +
+    "    f1.price AS p1, " +
+    "    f2.price AS p2, " +
+    "    f1.capacity AS c1, " +
+    "    f2.capacity AS c2, " +
+    "    2 AS num_flights " +
+    "FROM FLIGHTS f1 " +
+    "INNER JOIN FLIGHTS f2 ON f1.dest_city = f2.origin_city  AND f1.dest_state = f2.origin_state AND f1.day_of_month = f2.day_of_month  " +
+    "WHERE f1.origin_city = ? AND f2.dest_city = ? AND f1.day_of_month = ? AND f1.canceled = 0 AND f2.canceled = 0 ORDER BY duration, fid1, fid2 LIMIT ?";
+  private static final String BOOK_LIST_RESERVATIONS_SQL = "WITH rids AS (SELECT ri.fid "
+  + "    FROM RESERVATIONS_gcohen3 r "
+  + "    INNER JOIN USERS_gcohen3 u ON r.username = u.username "
+  + "    INNER JOIN RESERVATION_INFO_gcohen3 ri ON r.rid = ri.rid "
+  + "    WHERE u.username = ?"
+  + ") "
+  + "SELECT f.day_of_month "
+  + "FROM FLIGHTS f "
+  + "INNER JOIN rids ON f.fid = rids.fid;";
+  private static final String BOOK_GET_SEATS_SQL = "SELECT COUNT(r.rid) FROM RESERVATION_INFO_gcohen3 r INNER JOIN FLIGHTS f ON r.fid = f.fid WHERE f.fid = ?;";
+  private static final String BOOK_GET_RID_SQL = "SELECT COUNT(*) FROM RESERVATIONS_gcohen3;";
+  private static final String BOOK_INSERT_R_SQL = "INSERT INTO RESERVATIONS_gcohen3 VALUES (?, ?, ?);";
+  private static final String BOOK_INSERT_R_INFO_SQL = "INSERT INTO RESERVATION_INFO_gcohen3 VALUES (?, ?, ?);";
+
+  private static final String PAY_GET_BALANCE_SQL = "SELECT balance FROM USERS_gcohen3 WHERE username = ?;";
+  private static final String PAY_GET_INFO_SQL = "WITH UNPAID as (SELECT rid FROM RESERVATIONS_gcohen3 WHERE paid = 0 AND username = ? AND rid = ?) " +
+          "SELECT COUNT(r.rid), SUM(f.price) FROM FLIGHTS f INNER JOIN RESERVATION_INFO_gcohen3 r ON r.fid = f.fid " +
+          "WHERE r.rid IN (SELECT rid FROM UNPAID);";
+  private static final String PAY_UPDATE_BALANCE_SQL = "UPDATE USERS_gcohen3 SET balance = ? WHERE username = ?;";
+  private static final String PAY_UPDATE_PAID_SQL = "UPDATE RESERVATIONS_gcohen3 SET paid = 1 WHERE rid = ?;";
+
+  private static final String RESERVE_GET_R_SQL = "WITH rids as (" +
+    "  SELECT r.rid, r.paid, ri.fid " +
+    "  FROM RESERVATIONS_gcohen3 r " +
+    "  INNER JOIN RESERVATION_INFO_gcohen3 ri " +
+    "  ON r.rid = ri.rid " +
+    "  WHERE r.username = ?" +
+    ") " +
+    "SELECT " +
+    "  r.rid, " +
+    "  r.paid, " +
+    "  f.fid, " +
+    "  f.day_of_month, " +
+    "  f.carrier_id, " +
+    "  f.flight_num, " +
+    "  f.origin_city, " +
+    "  f.dest_city, " +
+    "  f.actual_time, " +
+    "  f.capacity, " +
+    "  f.price " +
+    "FROM FLIGHTS f " +
+    "INNER JOIN rids r " +
+    "ON f.fid = r.fid;";
+ 
   private PreparedStatement flightCapacityStmt;
-  private static final String CREATE_USER_F = "Failed to create user\n";
+  private PreparedStatement loginIsUniqueStatement;
+  private PreparedStatement createIsUniqueStatement;
+  private PreparedStatement createInsertStatement;
+  private PreparedStatement searchDirectFlightStatement;
+  private PreparedStatement searchIndirectFlightStatement;
+  private PreparedStatement bookListReservationStatement;
+  private PreparedStatement bookGetSeatsStatement;
+  private PreparedStatement bookGetRIDStatement;
+  private PreparedStatement bookInsertRStatement;
+  private PreparedStatement bookInsertRInfoStatement;
+  private PreparedStatement payGetBalanceStatement;
+  private PreparedStatement payGetInfoStatement;
+  private PreparedStatement payUpdateBalanceStatement;
+  private PreparedStatement payUpdatePaidStatement;
+  private PreparedStatement reserveGetReservationsStatement;
   private static String currentUser;
   private List<Itinerary> itins;
   //
@@ -144,7 +126,8 @@ public class Query extends QueryAbstract {
          "TRUNCATE TABLE USERS_gcohen3, RESERVATIONS_gcohen3, RESERVATION_INFO_gcohen3 CASCADE;"
       );
       clearStatement.executeUpdate(); // might want to keep check some stuff here
-    } catch (Exception e) {
+    } catch (SQLException e) {
+      if (isDeadlock(e)) clearTables();
       e.printStackTrace();
     }
   }
@@ -153,7 +136,21 @@ public class Query extends QueryAbstract {
    */
   private void prepareStatements() throws SQLException {
     flightCapacityStmt = conn.prepareStatement(FLIGHT_CAPACITY_SQL);
-
+    loginIsUniqueStatement =conn.prepareStatement(LOGIN_IS_UNIQUE_SQL);
+    createIsUniqueStatement = conn.prepareStatement(CREATE_IS_UNIQUE_SQL);
+    createInsertStatement = conn.prepareStatement(CREATE_INSERT_SQL);
+    searchDirectFlightStatement = conn.prepareStatement(SEARCH_DIRECT_FLIGHTS_SQL);
+    searchIndirectFlightStatement = conn.prepareStatement(SEARCH_INDIRECT_FLIGHTS_SQL);
+    bookListReservationStatement = conn.prepareStatement(BOOK_LIST_RESERVATIONS_SQL);
+    bookGetSeatsStatement = conn.prepareStatement(BOOK_GET_SEATS_SQL);
+    bookGetRIDStatement = conn.prepareStatement(BOOK_GET_RID_SQL);
+    bookInsertRStatement = conn.prepareStatement(BOOK_INSERT_R_SQL);
+    bookInsertRInfoStatement = conn.prepareStatement(BOOK_INSERT_R_INFO_SQL);
+    payGetBalanceStatement = conn.prepareStatement(PAY_GET_BALANCE_SQL);
+    payGetInfoStatement = conn.prepareStatement(PAY_GET_INFO_SQL);
+    payUpdateBalanceStatement = conn.prepareStatement(PAY_UPDATE_BALANCE_SQL);
+    payUpdatePaidStatement = conn.prepareStatement(PAY_UPDATE_PAID_SQL);
+    reserveGetReservationsStatement = conn.prepareStatement(RESERVE_GET_R_SQL);
     // TODO: YOUR CODE HERE
   }
 
@@ -162,24 +159,21 @@ public class Query extends QueryAbstract {
     // TODO: YOUR CODE HERE
     if (Query.currentUser != null) return "User already logged in\n";
 
-    try {
-
-      PreparedStatement isUniqueStatement = conn.prepareStatement(
-         "SELECT password FROM USERS_gcohen3 WHERE username = ?"
-      );
-      isUniqueStatement.clearParameters();  
-      isUniqueStatement.setString(1, username.toLowerCase());
-      ResultSet res = isUniqueStatement.executeQuery(); // might want to keep check some stuff here
+    try {      
+      
+      loginIsUniqueStatement.clearParameters();  
+      loginIsUniqueStatement.setString(1, username.toLowerCase());
+      ResultSet res = loginIsUniqueStatement.executeQuery(); // might want to keep check some stuff here
 
       // no user with username <username>
       if (!res.next()) return "Login failed\n";
-
+      
       // check if passwords match
       if (!PasswordUtils.plaintextMatchesSaltedHash(password, res.getBytes(1))) return "Login failed\n";
-      
-    } catch (Exception e) {
+
+    } catch (SQLException e) {
       e.printStackTrace();
-      return CREATE_USER_F;
+      return "Login failed\n";
     }
     Query.currentUser = username;
     return "Logged in as " + username + "\n";
@@ -189,42 +183,33 @@ public class Query extends QueryAbstract {
   public String transaction_createCustomer(String username, String password, int initAmount) {
     // TODO: YOUR CODE HERE
 
-    if (initAmount < 0) return CREATE_USER_F;
+    if (initAmount < 0) return "Failed to create user\n";
 
     try {
-
-      PreparedStatement isUniqueStatement = conn.prepareStatement(
-         "SELECT 1 FROM USERS_gcohen3 WHERE username = ?"
-      );
-      isUniqueStatement.clearParameters();  
-      isUniqueStatement.setString(1, username.toLowerCase());
-      ResultSet res = isUniqueStatement.executeQuery(); // might want to keep check some stuff here
-      if (res.next()) return CREATE_USER_F;
+    
+      createIsUniqueStatement.clearParameters();  
+      createIsUniqueStatement.setString(1, username.toLowerCase());
+      ResultSet res = createIsUniqueStatement.executeQuery(); // might want to keep check some stuff here
+      if (res.next()) return "Failed to create user\n";
       
-    } catch (Exception e) {
-      e.printStackTrace();
-      return CREATE_USER_F;
-    }
+      
+      byte[] hashedPassword = PasswordUtils.saltAndHashPassword(password);
 
-    byte[] hashedPassword = PasswordUtils.saltAndHashPassword(password);
+      createInsertStatement.clearParameters();
+      createInsertStatement.setString(1,username.toLowerCase());
+      createInsertStatement.setBytes(2, hashedPassword);
+      createInsertStatement.setInt(3, initAmount);
+      createInsertStatement.executeUpdate(); // might want to keep check some stuff here
 
-    try {
 
-      PreparedStatement clearStatement = conn.prepareStatement(
-         "INSERT INTO USERS_gcohen3 VALUES(?, ?, ?)"
-      );
-      clearStatement.clearParameters();
-      clearStatement.setString(1,username.toLowerCase());
-      clearStatement.setBytes(2, hashedPassword);
-      clearStatement.setInt(3, initAmount);
-      clearStatement.executeUpdate(); // might want to keep check some stuff here
+
       return "Created user " + username.toLowerCase() + "\n";
 
     } catch (Exception e) {
       e.printStackTrace();
     }
-    return CREATE_USER_F;
-
+    
+    return "Failed to create user\n";
   }
 
   /* See QueryAbstract.java for javadoc */
@@ -241,15 +226,13 @@ public class Query extends QueryAbstract {
     itins.clear();
 
     try {
-      PreparedStatement searchStatementDirect = conn.prepareStatement(
-          "SELECT fid, day_of_month,carrier_id,flight_num,origin_city,dest_city,actual_time,capacity,price FROM FLIGHTS WHERE origin_city = ? AND dest_city = ? AND day_of_month = ? ORDER BY actual_time ASC, fid ASC LIMIT ?"
-      );
-      searchStatementDirect.clearParameters();
-      searchStatementDirect.setString(1, originCity);
-      searchStatementDirect.setString(2, destinationCity);
-      searchStatementDirect.setInt(3, dayOfMonth);
-      searchStatementDirect.setInt(4, numberOfItineraries);
-      ResultSet oneHopResults = searchStatementDirect.executeQuery();
+
+      searchDirectFlightStatement.clearParameters();
+      searchDirectFlightStatement.setString(1, originCity);
+      searchDirectFlightStatement.setString(2, destinationCity);
+      searchDirectFlightStatement.setInt(3, dayOfMonth);
+      searchDirectFlightStatement.setInt(4, numberOfItineraries);
+      ResultSet oneHopResults = searchDirectFlightStatement.executeQuery();
       while (oneHopResults.next()) {
           int fid = oneHopResults.getInt("fid");
           int result_dayOfMonth = oneHopResults.getInt("day_of_month");
@@ -260,46 +243,18 @@ public class Query extends QueryAbstract {
           int result_time = oneHopResults.getInt("actual_time");
           int result_capacity = oneHopResults.getInt("capacity");
           int result_price = oneHopResults.getInt("price");
-
-          itins.add(new Itinerary(fid, -1, result_dayOfMonth, result_carrierId, "",
-                        result_flightNum, "", result_originCity, "",
-                        result_destCity, "", result_time, 0,
-                        result_capacity, 0, result_price, 0, 1));
+          Flight flight = new Flight(fid, result_dayOfMonth, result_carrierId, result_flightNum, result_originCity, result_destCity, result_time, result_capacity, result_price);
+          itins.add(new Itinerary(flight));
       }
 
       if (!directFlight) {
 
-          PreparedStatement combinedStatement = conn.prepareStatement(
-            "SELECT " +
-            "    f1.fid AS fid1, " +
-            "    f2.fid AS fid2, " +
-            "    f1.day_of_month AS day, " +
-            "    f1.carrier_id AS carrier1, " +
-            "    f1.flight_num AS number1, " +
-            "    f1.origin_city AS origin, " +
-            "    f1.dest_city AS intermediate, " +
-            "    f2.carrier_id AS carrier2, " +
-            "    f2.flight_num AS number2, " +
-            "    f2.dest_city AS dest, " +
-            "    f1.actual_time AS at1, " +
-            "    f2.actual_time AS at2, " +
-            "    f1.actual_time + f2.actual_time AS duration, " +
-            "    f1.price AS p1, " +
-            "    f2.price AS p2, " +
-            "    f1.capacity AS c1, " +
-            "    f2.capacity AS c2, " +
-            "    2 AS num_flights " +
-            "FROM FLIGHTS f1 " +
-            "JOIN FLIGHTS f2 ON f1.dest_city = f2.origin_city  AND f1.dest_state = f2.origin_state AND f1.day_of_month = f2.day_of_month  " +
-            "WHERE f1.origin_city = ? AND f2.dest_city = ? AND f1.day_of_month = ? AND f1.canceled = 0 AND f2.canceled = 0 ORDER BY duration, fid1, fid2 LIMIT ?"
-        );
-        
-        combinedStatement.setString(1, originCity);
-        combinedStatement.setString(2, destinationCity);
-        combinedStatement.setInt(3, dayOfMonth);
-        combinedStatement.setInt(4, numberOfItineraries - itins.size());
+        searchIndirectFlightStatement.setString(1, originCity);
+        searchIndirectFlightStatement.setString(2, destinationCity);
+        searchIndirectFlightStatement.setInt(3, dayOfMonth);
+        searchIndirectFlightStatement.setInt(4, numberOfItineraries - itins.size());
 
-        ResultSet combined = combinedStatement.executeQuery();
+        ResultSet combined = searchIndirectFlightStatement.executeQuery();
 
         while (combined.next()) {
           int fid1 = combined.getInt("fid1");
@@ -313,21 +268,20 @@ public class Query extends QueryAbstract {
           String result_originCity2 = combined.getString("intermediate");
           String result_destCity1 = combined.getString("intermediate");
           String result_destCity2 = combined.getString("dest");
-          int result_time1 = combined.getInt("at1");
-          int result_time2 = combined.getInt("at2");
           int result_capacity1 = combined.getInt("c1");
           int result_capacity2 = combined.getInt("c2");
           int result_price1 = combined.getInt("p1");
           int result_price2 = combined.getInt("p2");
+          int at1 = combined.getInt("at1");
+          int at2 = combined.getInt("at2");
 
-          itins.add(new Itinerary(fid1, fid2, result_dayOfMonth, result_carrierId1, result_carrierId2,
-                        result_flightNum1, result_flightNum2, result_originCity1, result_originCity2,
-                        result_destCity1, result_destCity2, result_time1, result_time2,
-                        result_capacity1, result_capacity2, result_price1, result_price2, 2));
+          Flight f1 = new Flight(fid1, result_dayOfMonth, result_carrierId1, result_flightNum1, result_originCity1, result_destCity1, at1, result_capacity1, result_price1);
+          Flight f2 = new Flight(fid2, result_dayOfMonth, result_carrierId2, result_flightNum2, result_originCity2, result_destCity2, at2, result_capacity2, result_price2);
+          itins.add(new Itinerary(f1, f2));
         }
       }
 
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
       return "Failed to search\n";
     }
@@ -338,7 +292,7 @@ public class Query extends QueryAbstract {
     int ID = 0;
     for (Itinerary itinerary : itins) {
       // Header with itinerary id info
-      sb.append("Itinerary ").append(ID++).append(": ").append(itinerary.getNumFlights()).append(" flight(s), ").append(itinerary.getTime()).append(" minutes\n");
+      sb.append("Itinerary ").append(ID++).append(": ").append(itinerary.numFlights).append(" flight(s), ").append(itinerary.time).append(" minutes\n");
       sb.append(itinerary.toString());
     }
   
@@ -359,26 +313,14 @@ public class Query extends QueryAbstract {
 
     try {
       conn.setAutoCommit(false);
-      PreparedStatement userReservationsStatement = conn.prepareStatement(
-         "WITH rids AS (SELECT ri.fid "
-    + "    FROM RESERVATIONS_gcohen3 r "
-    + "    INNER JOIN USERS_gcohen3 u ON r.username = u.username "
-    + "    INNER JOIN RESERVATION_INFO_gcohen3 ri ON r.rid = ri.rid "
-    + "    WHERE u.username = ?"
-    + ") "
-    + "SELECT f.day_of_month "
-    + "FROM FLIGHTS f "
-    + "INNER JOIN rids ON f.fid = rids.fid;"
-      );
-      userReservationsStatement.clearParameters();  
-      userReservationsStatement.setString(1, currentUser);
+      bookListReservationStatement.clearParameters();  
+      bookListReservationStatement.setString(1, currentUser);
       
-      ResultSet res = userReservationsStatement.executeQuery(); // might want to keep check some stuff here
+      ResultSet res = bookListReservationStatement.executeQuery(); // might want to keep check some stuff here
       while (res.next()) {
         bookedDays.add(res.getInt(1));
       } 
-
-      if (bookedDays.contains(itinerary.resultDayOfMonth)) {
+      if (bookedDays.contains(itinerary.f1.dayOfMonth)) {
         conn.rollback(); // Roll back any query executions in transaction thus far
         conn.setAutoCommit(true); // End the transaction
         return "You cannot book two flights in the same day\n";
@@ -388,81 +330,65 @@ public class Query extends QueryAbstract {
       int seatsBookedF1 = 0;
       int seatsBookedF2 = 0;
 
-      PreparedStatement bookedSeatsStatement = conn.prepareStatement(
-         "SELECT COUNT(r.rid) FROM RESERVATION_INFO_gcohen3 r INNER JOIN FLIGHTS f ON r.fid = f.fid WHERE f.fid = ?;"
-      );
-      bookedSeatsStatement.clearParameters();  
-      bookedSeatsStatement.setInt(1, itinerary.fid1);
-      res = bookedSeatsStatement.executeQuery(); // might want to keep check some stuff here
+
+      bookGetSeatsStatement.clearParameters();  
+      bookGetSeatsStatement.setInt(1, itinerary.f1.fid);
+      res = bookGetSeatsStatement.executeQuery(); // might want to keep check some stuff here
       while (res.next()) {
         seatsBookedF1 += res.getInt(1);
       } 
       if (itinerary.numFlights > 1) {
-        bookedSeatsStatement.clearParameters();  
-        bookedSeatsStatement.setInt(1, itinerary.fid2);
-        res = bookedSeatsStatement.executeQuery(); // might want to keep check some stuff here
+        bookGetSeatsStatement.clearParameters();  
+        bookGetSeatsStatement.setInt(1, itinerary.f2.fid);
+        res = bookGetSeatsStatement.executeQuery(); // might want to keep check some stuff here
         while (res.next()) {
           seatsBookedF2 += res.getInt(1);
         } 
       }
 
-      if (itinerary.resultCapacity1 < seatsBookedF1 + 1 || ( itinerary.numFlights > 1 && itinerary.resultCapacity2 < seatsBookedF2 + 1)) {
+      if (itinerary.f1.capacity < seatsBookedF1 + 1 || ( itinerary.numFlights > 1 && itinerary.f2.capacity < seatsBookedF2 + 1)) {
         conn.rollback(); // Roll back any query executions in transaction thus far
         conn.setAutoCommit(true); // End the transaction
         return "Booking failed\n";
       }
 
       // get RID
-      PreparedStatement ridStatement = conn.prepareStatement(
-         "SELECT COUNT(*) FROM RESERVATIONS_gcohen3;"
-      );
-      ridStatement.clearParameters();
-      res = ridStatement.executeQuery();
+      bookGetRIDStatement.clearParameters();
+      res = bookGetRIDStatement.executeQuery();
       if (res.next())RID += res.getInt(1);
 
       // add reservation
-      PreparedStatement reserveStatement = conn.prepareStatement(
-         "INSERT INTO RESERVATIONS_gcohen3 VALUES (?, ?, ?);"
-      );
-      reserveStatement.clearParameters();  
-      reserveStatement.setInt(1, RID);
-      reserveStatement.setString(2, currentUser);
-      reserveStatement.setInt(3, 0);
-      if(reserveStatement.executeUpdate() == 0){
+      bookInsertRStatement.clearParameters();  
+      bookInsertRStatement.setInt(1, RID);
+      bookInsertRStatement.setString(2, currentUser);
+      bookInsertRStatement.setInt(3, 0);
+      if (bookInsertRStatement.executeUpdate() == 0) {
         conn.rollback(); // Roll back any query executions in transaction thus far
         conn.setAutoCommit(true); // End the transaction
         return "Booking failed\n";
       }
 
-      // add flights to reservations info
-      PreparedStatement addFlightsStatement = conn.prepareStatement(
-         "INSERT INTO RESERVATION_INFO_gcohen3 VALUES (?, ?);"
-      );
-      addFlightsStatement.clearParameters();  
-      addFlightsStatement.setInt(1, RID);
-      addFlightsStatement.setInt(2, itinerary.fid1);
-      if(addFlightsStatement.executeUpdate() == 0) {
-        conn.rollback(); // Roll back any query executions in transaction thus far
-        conn.setAutoCommit(true); // End the transaction
-        return "Booking failed\n";
-      }
-
+      // add reservation info
+      bookInsertRInfoStatement.clearParameters();  
+      bookInsertRInfoStatement.setInt(1, RID);
+      bookInsertRInfoStatement.setInt(2, itinerary.f1.fid);
       if (itinerary.numFlights > 1) {
-        addFlightsStatement.clearParameters();  
-        addFlightsStatement.setInt(1, RID);
-        addFlightsStatement.setInt(2, itinerary.fid2);
-        if(addFlightsStatement.executeUpdate() == 0){
-          conn.rollback(); // Roll back any query executions in transaction thus far
-          conn.setAutoCommit(true); // End the transaction
-          return "Booking failed\n";
-        }
+        bookInsertRInfoStatement.setInt(3, itinerary.f2.fid);
+      } else {
+        bookInsertRInfoStatement.setNull(3, java.sql.Types.INTEGER);
       }
+    
+      if(bookInsertRInfoStatement.executeUpdate() == 0) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "Booking failed\n";
+      }
+      
       conn.commit(); // Commit our query executions (make them permanent)
       conn.setAutoCommit(true); // End the transaction
       
     } catch (SQLException e) {
       e.printStackTrace();
-      if (isDeadlock(e)) return transaction_pay(itineraryId);
       return "Booking failed\n";
     }
     return "Booked flight(s), reservation ID: "+ RID + "\n";
@@ -478,22 +404,15 @@ public class Query extends QueryAbstract {
     int found = 0;
     try {
       conn.setAutoCommit(false);
-      PreparedStatement getBalanceStatement = conn.prepareStatement(
-        "SELECT balance FROM USERS_gcohen3 WHERE username = ?;"
-      );
-      getBalanceStatement.setString(1, currentUser);
-      ResultSet res = getBalanceStatement.executeQuery(); // might want to keep check some stuff here
+      payGetBalanceStatement.setString(1, currentUser);
+      ResultSet res = payGetBalanceStatement.executeQuery(); // might want to keep check some stuff here
       if (res.next()) balance += res.getInt(1);
 
-      PreparedStatement getInfoStatement = conn.prepareStatement(
-          "WITH UNPAID as (SELECT rid FROM RESERVATIONS_gcohen3 WHERE paid = 0 AND username = ? AND rid = ?) " +
-          "SELECT COUNT(r.rid), SUM(f.price) FROM FLIGHTS f INNER JOIN RESERVATION_INFO_gcohen3 r ON r.fid = f.fid " +
-          "WHERE r.rid IN (SELECT rid FROM UNPAID);"
-      );
-      getInfoStatement.clearParameters();
-      getInfoStatement.setString(1, currentUser);
-      getInfoStatement.setInt(2, reservationId);
-      res = getInfoStatement.executeQuery();
+
+      payGetInfoStatement.clearParameters();
+      payGetInfoStatement.setString(1, currentUser);
+      payGetInfoStatement.setInt(2, reservationId);
+      res = payGetInfoStatement.executeQuery();
       if(res.next()) {
         found = res.getInt(1);
         totalPrice = res.getInt(2);
@@ -512,24 +431,18 @@ public class Query extends QueryAbstract {
       }
 
       // make payment: blanance -= totalPrice and change paid to 1 in reservations table
-      PreparedStatement updateBalanceStatement = conn.prepareStatement(
-        "UPDATE USERS_gcohen3 SET balance = ? WHERE username = ?;"
-      );
-      updateBalanceStatement.clearParameters();;
-      updateBalanceStatement.setInt(1, balance - totalPrice);
-      updateBalanceStatement.setString(2, currentUser);
-      if (updateBalanceStatement.executeUpdate() == 0) {
+      payUpdateBalanceStatement.clearParameters();;
+      payUpdateBalanceStatement.setInt(1, balance - totalPrice);
+      payUpdateBalanceStatement.setString(2, currentUser);
+      if (payUpdateBalanceStatement.executeUpdate() == 0) {
         conn.rollback(); // Roll back any query executions in transaction thus far
         conn.setAutoCommit(true); // End the transaction
         return "Failed to pay for reservation " + reservationId + "\n";
       }
 
-      PreparedStatement updatePaidStatement = conn.prepareStatement(
-        "UPDATE RESERVATIONS_gcohen3 SET paid = 1 WHERE rid = ?;"
-      );
-      updatePaidStatement.clearParameters();;
-      updatePaidStatement.setInt(1, reservationId);
-      if (updatePaidStatement.executeUpdate() == 0) {
+      payUpdatePaidStatement.clearParameters();;
+      payUpdatePaidStatement.setInt(1, reservationId);
+      if (payUpdatePaidStatement.executeUpdate() == 0) {
         conn.rollback(); // Roll back any query executions in transaction thus far
         conn.setAutoCommit(true); // End the transaction
         return "Failed to pay for reservation " + reservationId + "\n";
@@ -540,7 +453,6 @@ public class Query extends QueryAbstract {
       
     } catch (SQLException e) {
       e.printStackTrace();
-      if (isDeadlock(e)) return transaction_pay(reservationId);
       return "Failed to pay for reservation " + reservationId + "\n";
     }
     return "Paid reservation: " + reservationId + " remaining balance: " + (balance - totalPrice) + "\n";
@@ -557,32 +469,8 @@ public class Query extends QueryAbstract {
 
     try {
       conn.setAutoCommit(false);
-      PreparedStatement getReservationsStatement = conn.prepareStatement(
-        "WITH rids as (" +
-        "  SELECT r.rid, r.paid, ri.fid " +
-        "  FROM RESERVATIONS_gcohen3 r " +
-        "  INNER JOIN RESERVATION_INFO_gcohen3 ri " +
-        "  ON r.rid = ri.rid " +
-        "  WHERE r.username = ?" +
-        ") " +
-        "SELECT " +
-        "  r.rid, " +
-        "  r.paid, " +
-        "  f.fid, " +
-        "  f.day_of_month, " +
-        "  f.carrier_id, " +
-        "  f.flight_num, " +
-        "  f.origin_city, " +
-        "  f.dest_city, " +
-        "  f.actual_time, " +
-        "  f.capacity, " +
-        "  f.price " +
-        "FROM FLIGHTS f " +
-        "INNER JOIN rids r " +
-        "ON f.fid = r.fid;"
-      );
-      getReservationsStatement.setString(1, currentUser);
-      ResultSet res = getReservationsStatement.executeQuery(); // might want to keep check some stuff here
+      reserveGetReservationsStatement.setString(1, currentUser);
+      ResultSet res = reserveGetReservationsStatement.executeQuery(); // might want to keep check some stuff here
       while (res.next()) {
           int paid = res.getInt("paid");
           int rid = res.getInt("rid");
@@ -684,7 +572,59 @@ public class Query extends QueryAbstract {
     public String toString() {
       return "ID: " + fid + " Day: " + dayOfMonth + " Carrier: " + carrierId + " Number: "
           + flightNum + " Origin: " + originCity + " Dest: " + destCity + " Duration: " + time
-          + " Capacity: " + capacity + " Price: " + price;
+          + " Capacity: " + capacity + " Price: " + price + "\n";
+    }
+  }
+
+  public class Itinerary implements Comparable<Itinerary> {
+    private int numFlights;
+    private Flight f1;
+    private Flight f2;
+    private  int time;
+
+    // Constructor
+    public Itinerary(Flight f1) {
+      this.f1 = f1;
+      this.numFlights = 1;
+      this.time = f1.time;
+    }
+
+    public Itinerary(Flight f1, Flight f2) {
+      this.f1 = f1;
+      this.f2 = f2;
+      this.numFlights = 2;
+      this.time = f1.time + f2.time;
+    }
+
+    // Implement compareTo method for sorting
+    @Override
+    public int compareTo(Itinerary other) {
+        // Sort by actual time (assuming resultTime1 is the actual time)
+        if (this.time != other.time) {
+            return Integer.compare(this.time, other.time);
+        } else if (this.f1.fid != other.f1.fid) {
+            return Integer.compare(this.f1.fid, other.f1.fid);
+        } else {
+            if (this.f2 == null) {
+              return -1;
+            }
+            if (other.f2 == null) {
+              return 1;
+            }
+            return Integer.compare(this.f2.fid, other.f2.fid);
+        }
+    }
+
+    // toString method for easy printing
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        // Content
+        sb.append(this.f1.toString());
+        if (this.numFlights == 2) {              
+            sb.append(this.f2.toString());
+        }
+        return sb.toString();
     }
   }
 }

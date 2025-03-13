@@ -49,6 +49,11 @@ create table RESERVATIONS_gcohen3(
 
 create table RESERVATION_INFO_gcohen3(
         rid int REFERENCES RESERVATIONS_gcohen3,
-        fid int REFERENCES FLIGHTS
+        fid1 int REFERENCES FLIGHTS,
+        fid2 int REFERENCES FLIGHTS
 );
 
+-- create table RESERVATION_INFO_gcohen3(
+--         rid int REFERENCES RESERVATIONS_gcohen3,
+--         fid int REFERENCES FLIGHTS
+-- );
