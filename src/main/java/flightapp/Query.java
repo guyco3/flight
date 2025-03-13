@@ -481,20 +481,44 @@ public class Query extends QueryAbstract {
       if (res.next()) balance += res.getInt(1);
 
       PreparedStatement getInfoStatement = conn.prepareStatement(
-        "SELECT balance FROM USERS_gcohen3 WHERE username = ?;"
+        "SELECT SUM(f.price) FROM FLIGHT f INNER JOIN RESERVATION_INFO_gcohen3 r ON r.fid = f.fid AND f.rid = ?;"
       );
       getInfoStatement.clearParameters();
-
-
-
+      getInfoStatement.setInt(1, reservationId);
+      if(res.next()) totalPrice += res.getInt(1);
       
-     
+      if (balance < totalPrice) return "User has only " + balance + " in account but itinerary costs " + totalPrice + "\n";
+
+      // make payment: blanance -= totalPrice and change paid to 1 in reservations table
+      PreparedStatement updateBalanceStatement = conn.prepareStatement(
+        "UPDATE USERS_gcohen3 SET balance = ? WHERE username = ?;"
+      );
+      updateBalanceStatement.clearParameters();;
+      updateBalanceStatement.setInt(1, balance - totalPrice);
+      updateBalanceStatement.setString(2, currentUser);
+      if (updateBalanceStatement.executeUpdate() == 0) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "Failed to pay for reservation " + reservationId + "\n";
+      }
+
+      PreparedStatement updatePaidStatement = conn.prepareStatement(
+        "UPDATE RESERVATIONS_gcohen3 SET paid = 1 WHERE rid = ?;"
+      );
+      updatePaidStatement.clearParameters();;
+      updatePaidStatement.setInt(1, reservationId);
+      if (updatePaidStatement.executeUpdate() == 0) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "Failed to pay for reservation " + reservationId + "\n";
+      }
+
       conn.commit(); // Commit our query executions (make them permanent)
       conn.setAutoCommit(true); // End the transaction
       
     } catch (Exception e) {
       e.printStackTrace();
-      return "Booking failed\n";
+      return "Failed to pay for reservation " + reservationId + "\n";
     }
     return "Failed to pay for reservation " + reservationId + "\n";
   }
