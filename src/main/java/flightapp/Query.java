@@ -141,14 +141,13 @@ public class Query extends QueryAbstract {
     try {
       // TODO: YOUR CODE HERE
       PreparedStatement clearStatement = conn.prepareStatement(
-         "TRUNCATE TABLE USERS_gcohen3, RESERVATIONS_gcohen3, RESERVATION_INFO_gcohen3 CASCADE"
+         "TRUNCATE TABLE USERS_gcohen3, RESERVATIONS_gcohen3, RESERVATION_INFO_gcohen3 CASCADE;"
       );
       clearStatement.executeUpdate(); // might want to keep check some stuff here
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
-
   /*
    * prepare all the SQL statements in this method.
    */
@@ -471,7 +470,8 @@ public class Query extends QueryAbstract {
     if (currentUser == null) return "Cannot pay, not logged in\n";
 
     int balance = 0;
-    int totalPrice = 0;
+    int totalPrice = -1;
+    int found = 0;
     try {
       conn.setAutoCommit(false);
       PreparedStatement getBalanceStatement = conn.prepareStatement(
@@ -482,11 +482,20 @@ public class Query extends QueryAbstract {
       if (res.next()) balance += res.getInt(1);
 
       PreparedStatement getInfoStatement = conn.prepareStatement(
-        "SELECT SUM(f.price) FROM FLIGHT f INNER JOIN RESERVATION_INFO_gcohen3 r ON r.fid = f.fid AND f.rid = ?;"
+          "WITH UNPAID as (SELECT rid FROM RESERVATIONS_gcohen3 WHERE paid = 0 AND username = ? AND rid = ?) " +
+          "SELECT COUNT(r.rid), SUM(f.price) FROM FLIGHTS f INNER JOIN RESERVATION_INFO_gcohen3 r ON r.fid = f.fid " +
+          "WHERE r.rid IN (SELECT rid FROM UNPAID);"
       );
       getInfoStatement.clearParameters();
-      getInfoStatement.setInt(1, reservationId);
-      if(res.next()) totalPrice += res.getInt(1);
+      getInfoStatement.setString(1, currentUser);
+      getInfoStatement.setInt(2, reservationId);
+      res = getInfoStatement.executeQuery();
+      if(res.next()) {
+        found = res.getInt(1);
+        totalPrice = res.getInt(2);
+      }
+
+      if (found == 0) return "Cannot find unpaid reservation " + reservationId + " under user: " + currentUser + "\n";
       
       if (balance < totalPrice) return "User has only " + balance + " in account but itinerary costs " + totalPrice + "\n";
 
