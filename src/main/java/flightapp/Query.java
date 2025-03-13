@@ -457,8 +457,9 @@ public class Query extends QueryAbstract {
       conn.commit(); // Commit our query executions (make them permanent)
       conn.setAutoCommit(true); // End the transaction
       
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
+      if (isDeadlock(e)) return transaction_pay(itineraryId);
       return "Booking failed\n";
     }
     return "Booked flight(s), reservation ID: "+ RID + "\n";
@@ -469,9 +470,9 @@ public class Query extends QueryAbstract {
     // TODO: YOUR CODE HERE
     if (currentUser == null) return "Cannot pay, not logged in\n";
 
+    int balance = 0;
+    int totalPrice = 0;
     try {
-      int balance = 0;
-      int totalPrice = 0;
       conn.setAutoCommit(false);
       PreparedStatement getBalanceStatement = conn.prepareStatement(
         "SELECT balance FROM USERS_gcohen3 WHERE username = ?;"
@@ -516,11 +517,12 @@ public class Query extends QueryAbstract {
       conn.commit(); // Commit our query executions (make them permanent)
       conn.setAutoCommit(true); // End the transaction
       
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
+      if (isDeadlock(e)) return transaction_pay(reservationId);
       return "Failed to pay for reservation " + reservationId + "\n";
     }
-    return "Failed to pay for reservation " + reservationId + "\n";
+    return "Paid reservation: " + reservationId + " remaining balance: " + (balance - totalPrice) + "\n";
   }
 
   /* See QueryAbstract.java for javadoc */
