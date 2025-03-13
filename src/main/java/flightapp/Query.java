@@ -378,7 +378,11 @@ public class Query extends QueryAbstract {
         bookedDays.add(res.getInt(1));
       } 
 
-      if (bookedDays.contains(itinerary.resultDayOfMonth)) return "You cannot book two flights in the same day\n";
+      if (bookedDays.contains(itinerary.resultDayOfMonth)) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "You cannot book two flights in the same day\n";
+      }
 
       // get number of seats for current flight
       int seatsBookedF1 = 0;
@@ -495,9 +499,17 @@ public class Query extends QueryAbstract {
         totalPrice = res.getInt(2);
       }
 
-      if (found == 0) return "Cannot find unpaid reservation " + reservationId + " under user: " + currentUser + "\n";
+      if (found == 0) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "Cannot find unpaid reservation " + reservationId + " under user: " + currentUser + "\n";
+      }
       
-      if (balance < totalPrice) return "User has only " + balance + " in account but itinerary costs " + totalPrice + "\n";
+      if (balance < totalPrice) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "User has only " + balance + " in account but itinerary costs " + totalPrice + "\n";
+      }
 
       // make payment: blanance -= totalPrice and change paid to 1 in reservations table
       PreparedStatement updateBalanceStatement = conn.prepareStatement(
@@ -537,6 +549,62 @@ public class Query extends QueryAbstract {
   /* See QueryAbstract.java for javadoc */
   public String transaction_reservations() {
     // TODO: YOUR CODE HERE
+    if (currentUser == null) return "Cannot view reservations, not logged in\n";
+
+    Map<Integer, ArrayList<Flight>> reservationsMap = new TreeMap<>();
+    Map<Integer, Integer> paidMap = new HashMap<>();
+    StringBuffer sb = new StringBuffer();
+
+    try {
+      conn.setAutoCommit(false);
+      PreparedStatement getReservationsStatement = conn.prepareStatement(
+        "WITH rids as (SELECT r.paid, r.fid RESERVATIONS_gcohen3 r INNER JOIN RESERVATION_INFO_gcohen3 ri ON r.rid = ri.rid WHERE r.username = ?) SELECT * FROM FLIGHTS f INNER JOIN RESERVATIONS_INFO r ON f.fid = rids.fid;"
+      );
+      getReservationsStatement.setString(1, currentUser);
+      ResultSet res = getReservationsStatement.executeQuery(); // might want to keep check some stuff here
+      while (res.next()) {
+          int paid = res.getInt("paid");
+          int rid = res.getInt("rid");
+          int fid = res.getInt("fid");
+          int result_dayOfMonth = res.getInt("day_of_month");
+          String result_carrierId = res.getString("carrier_id");
+          String result_flightNum = res.getString("flight_num");
+          String result_originCity = res.getString("origin_city");
+          String result_destCity = res.getString("dest_city");
+          int result_time = res.getInt("actual_time");
+          int result_capacity = res.getInt("capacity");
+          int result_price = res.getInt("price");
+
+          if (!reservationsMap.containsKey(rid)) {
+            reservationsMap.put(rid, new ArrayList<>());
+          }
+          paidMap.put(rid, paid);
+          reservationsMap.get(rid).add(new Flight(fid, result_dayOfMonth, result_carrierId, result_flightNum, result_originCity, result_destCity, result_time, result_capacity, result_price));
+      }
+
+      if (reservationsMap.size() == 0) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "No reservations found\n";
+      }
+
+      for (int rid : reservationsMap.keySet()) {
+        ArrayList<Flight> tmp = reservationsMap.get((rid));
+        sb.append("Reservation "  + rid + " paid: " + paidMap.get(rid) + ":\n");
+        for (Flight flight : tmp) {
+          sb.append(flight.toString());
+        }
+      }
+      
+      conn.commit(); // Commit our query executions (make them permanent)
+      conn.setAutoCommit(true); // End the transaction
+      
+    } catch (SQLException e) {
+      e.printStackTrace();
+      if (isDeadlock(e)) return transaction_reservations();
+      return "Failed to retrieve reservations\n";
+    }
+
     return "Failed to retrieve reservations\n";
   }
 
