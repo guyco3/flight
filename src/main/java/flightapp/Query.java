@@ -239,6 +239,7 @@ public class Query extends QueryAbstract {
     // TODO: YOUR CODE HERE
 
     StringBuffer sb = new StringBuffer();
+    itins.clear();
 
     try {
       PreparedStatement searchStatementDirect = conn.prepareStatement(
@@ -466,6 +467,35 @@ public class Query extends QueryAbstract {
   /* See QueryAbstract.java for javadoc */
   public String transaction_pay(int reservationId) {
     // TODO: YOUR CODE HERE
+    if (currentUser == null) return "Cannot pay, not logged in\n";
+
+    try {
+      int balance = 0;
+      int totalPrice = 0;
+      conn.setAutoCommit(false);
+      PreparedStatement getBalanceStatement = conn.prepareStatement(
+        "SELECT balance FROM USERS_gcohen3 WHERE username = ?;"
+      );
+      getBalanceStatement.setString(1, currentUser);
+      ResultSet res = getBalanceStatement.executeQuery(); // might want to keep check some stuff here
+      if (res.next()) balance += res.getInt(1);
+
+      PreparedStatement getInfoStatement = conn.prepareStatement(
+        "SELECT balance FROM USERS_gcohen3 WHERE username = ?;"
+      );
+      getInfoStatement.clearParameters();
+
+
+
+      
+     
+      conn.commit(); // Commit our query executions (make them permanent)
+      conn.setAutoCommit(true); // End the transaction
+      
+    } catch (Exception e) {
+      e.printStackTrace();
+      return "Booking failed\n";
+    }
     return "Failed to pay for reservation " + reservationId + "\n";
   }
 
