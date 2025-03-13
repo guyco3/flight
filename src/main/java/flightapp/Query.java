@@ -558,7 +558,28 @@ public class Query extends QueryAbstract {
     try {
       conn.setAutoCommit(false);
       PreparedStatement getReservationsStatement = conn.prepareStatement(
-        "WITH rids as (SELECT r.paid, r.fid RESERVATIONS_gcohen3 r INNER JOIN RESERVATION_INFO_gcohen3 ri ON r.rid = ri.rid WHERE r.username = ?) SELECT * FROM FLIGHTS f INNER JOIN RESERVATIONS_INFO r ON f.fid = rids.fid;"
+        "WITH rids as (" +
+        "  SELECT r.rid, r.paid, ri.fid " +
+        "  FROM RESERVATIONS_gcohen3 r " +
+        "  INNER JOIN RESERVATION_INFO_gcohen3 ri " +
+        "  ON r.rid = ri.rid " +
+        "  WHERE r.username = ?" +
+        ") " +
+        "SELECT " +
+        "  r.rid, " +
+        "  r.paid, " +
+        "  f.fid, " +
+        "  f.day_of_month, " +
+        "  f.carrier_id, " +
+        "  f.flight_num, " +
+        "  f.origin_city, " +
+        "  f.dest_city, " +
+        "  f.actual_time, " +
+        "  f.capacity, " +
+        "  f.price " +
+        "FROM FLIGHTS f " +
+        "INNER JOIN rids r " +
+        "ON f.fid = r.fid;"
       );
       getReservationsStatement.setString(1, currentUser);
       ResultSet res = getReservationsStatement.executeQuery(); // might want to keep check some stuff here
@@ -590,10 +611,11 @@ public class Query extends QueryAbstract {
 
       for (int rid : reservationsMap.keySet()) {
         ArrayList<Flight> tmp = reservationsMap.get((rid));
-        sb.append("Reservation "  + rid + " paid: " + paidMap.get(rid) + ":\n");
+        sb.append("Reservation "  + rid + " paid: " + (paidMap.get(rid) == 0 ? "false" : "true") + ":\n");
         for (Flight flight : tmp) {
           sb.append(flight.toString());
         }
+        sb.append("\n");
       }
       
       conn.commit(); // Commit our query executions (make them permanent)
@@ -604,8 +626,7 @@ public class Query extends QueryAbstract {
       if (isDeadlock(e)) return transaction_reservations();
       return "Failed to retrieve reservations\n";
     }
-
-    return "Failed to retrieve reservations\n";
+    return sb.toString();
   }
 
   /**
