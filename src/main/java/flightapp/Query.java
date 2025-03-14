@@ -19,7 +19,7 @@ public class Query extends QueryAbstract {
   private static final String LOGIN_IS_UNIQUE_SQL = "SELECT password FROM USERS_gcohen3 WHERE username = ?";
   private static final String CREATE_IS_UNIQUE_SQL = "SELECT 1 FROM USERS_gcohen3 WHERE username = ?";
   private static final String CREATE_INSERT_SQL = "INSERT INTO USERS_gcohen3 VALUES(?, ?, ?)";
-  private static final String SEARCH_DIRECT_FLIGHTS_SQL = "SELECT * FROM FLIGHTS WHERE origin_city = ? AND dest_city = ? AND day_of_month = ? ORDER BY actual_time ASC, fid ASC LIMIT ?";
+  private static final String SEARCH_DIRECT_FLIGHTS_SQL = "SELECT * FROM FLIGHTS WHERE origin_city = ? AND dest_city = ? AND day_of_month = ? AND canceled = 0 ORDER BY actual_time ASC, fid ASC LIMIT ?";
   private static final String SEARCH_INDIRECT_FLIGHTS_SQL = "SELECT " +
     "    f1.fid AS fid1, " +
     "    f2.fid AS fid2, " +
@@ -191,11 +191,15 @@ public class Query extends QueryAbstract {
 
     try {
     
+      conn.setAutoCommit(false);
       createIsUniqueStatement.clearParameters();  
       createIsUniqueStatement.setString(1, username.toLowerCase());
       ResultSet res = createIsUniqueStatement.executeQuery(); // might want to keep check some stuff here
-      if (res.next()) return "Failed to create user\n";
-      
+      if (res.next()) {
+        conn.rollback(); // Manually roll back the transaction
+        conn.setAutoCommit(true); // Reset auto-commit mode
+        return "Failed to create user\n";
+      }
       
       byte[] hashedPassword = PasswordUtils.saltAndHashPassword(password);
 
@@ -204,15 +208,20 @@ public class Query extends QueryAbstract {
       createInsertStatement.setBytes(2, hashedPassword);
       createInsertStatement.setInt(3, initAmount);
       createInsertStatement.executeUpdate(); // might want to keep check some stuff here
-
-
-
+      conn.commit();
+      conn.setAutoCommit(true);
       return "Created user " + username.toLowerCase() + "\n";
 
     } catch (Exception e) {
+      if (e instanceof SQLException && isDeadlock((SQLException)e)) {
+          try {
+              conn.rollback(); // Manually roll back the transaction
+              conn.setAutoCommit(true); // Reset auto-commit mode
+              return transaction_createCustomer(username, password, initAmount);
+          } catch (SQLException ex) {}
+      }
       e.printStackTrace();
     }
-    
     return "Failed to create user\n";
   }
 
@@ -318,19 +327,7 @@ public class Query extends QueryAbstract {
     try {
       conn.setAutoCommit(false);
       ResultSet res;
-      bookListReservationStatement.clearParameters();  
-      bookListReservationStatement.setString(1, currentUser);
-      
-      res = bookListReservationStatement.executeQuery(); // might want to keep check some stuff here
-      while (res.next()) {
-        bookedDays.add(res.getInt(1));
-      } 
-      if (bookedDays.contains(itinerary.f1.dayOfMonth)) {
-        conn.rollback(); // Roll back any query executions in transaction thus far
-        conn.setAutoCommit(true); // End the transaction
-        return "You cannot book two flights in the same day\n";
-      }
-
+    
       // get number of seats for current flight
       int seatsBookedF1 = 0;
       int seatsBookedF2 = 0;
@@ -355,6 +352,19 @@ public class Query extends QueryAbstract {
         conn.rollback(); // Roll back any query executions in transaction thus far
         conn.setAutoCommit(true); // End the transaction
         return "Booking failed\n";
+      }
+
+      bookListReservationStatement.clearParameters();  
+      bookListReservationStatement.setString(1, currentUser);
+      
+      res = bookListReservationStatement.executeQuery(); // might want to keep check some stuff here
+      while (res.next()) {
+        bookedDays.add(res.getInt(1));
+      } 
+      if (bookedDays.contains(itinerary.f1.dayOfMonth)) {
+        conn.rollback(); // Roll back any query executions in transaction thus far
+        conn.setAutoCommit(true); // End the transaction
+        return "You cannot book two flights in the same day\n";
       }
 
       // get RID
@@ -394,11 +404,13 @@ public class Query extends QueryAbstract {
       
     } catch (Exception e) {
 
-      try {
-        conn.rollback(); // Roll back any query executions in transaction thus far
-        conn.setAutoCommit(true); // End the transaction
-        if (isDeadlock((SQLException) e)) return transaction_book(itineraryId);
-      } catch (SQLException se) {}
+      if (e instanceof SQLException && isDeadlock((SQLException)e)) {
+        try {
+            conn.rollback(); // Manually roll back the transaction
+            conn.setAutoCommit(true); // Reset auto-commit mode
+            return transaction_book(itineraryId);
+        } catch (SQLException ex) {}
+      }
       e.printStackTrace();
       return "Booking failed in catch\n";
     }
@@ -520,9 +532,14 @@ public class Query extends QueryAbstract {
       conn.setAutoCommit(true); // End the transaction
       
     } catch (SQLException e) {
+      if (e instanceof SQLException && isDeadlock((SQLException)e)) {
+        try {
+            conn.rollback(); // Manually roll back the transaction
+            conn.setAutoCommit(true); // Reset auto-commit mode
+            return transaction_reservations();
+        } catch (SQLException ex) {}
+      }
       e.printStackTrace();
-      if (isDeadlock(e)) return transaction_reservations();
-      return "Failed to retrieve reservations\n";
     }
     return sb.toString();
   }
@@ -541,6 +558,8 @@ public class Query extends QueryAbstract {
 
     return capacity;
   }
+
+
 
   /**
    * Utility function to determine whether an error was caused by a deadlock
