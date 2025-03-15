@@ -180,6 +180,7 @@ public class Query extends QueryAbstract {
       return "Login failed\n";
     }
     this.currentUser = username;
+    itins.clear();
     return "Logged in as " + username + "\n";
   }
 
