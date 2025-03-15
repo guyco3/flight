@@ -1,0 +1,28 @@
+# Create and login two unrelated users.  Note that even though these commands are
+# executed concurrently, they do not have alternative outputs
+
+# commands:
+create user1 user1 100
+login user1 wrong
+quit
+*
+
+# expected ouptut:
+Created user user1
+Login failed
+Goodbye
+*
+
+##################### Terminal #2: #####################
+
+# commands:
+create user2 user2 100
+login user2 wrong2
+quit
+*
+
+# expected output:
+Created user user2
+Login failed
+Goodbye
+*

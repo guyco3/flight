@@ -105,14 +105,14 @@ public class Query extends QueryAbstract {
   private PreparedStatement payUpdateBalanceStatement;
   private PreparedStatement payUpdatePaidStatement;
   private PreparedStatement reserveGetReservationsStatement;
-  private static String currentUser;
+  private String currentUser;
   private List<Itinerary> itins;
   //
   // Instance variables
   //
 
   protected Query() throws SQLException, IOException {
-    Query.currentUser = null;
+    currentUser = null;
     itins = new ArrayList<Itinerary>();
     prepareStatements();
   }
@@ -161,7 +161,7 @@ public class Query extends QueryAbstract {
   /* See QueryAbstract.java for javadoc */
   public String transaction_login(String username, String password) {
     // TODO: YOUR CODE HERE
-    if (Query.currentUser != null) return "User already logged in\n";
+    if (this.currentUser != null) return "User already logged in\n";
 
     try {      
       
@@ -179,7 +179,7 @@ public class Query extends QueryAbstract {
       e.printStackTrace();
       return "Login failed\n";
     }
-    Query.currentUser = username;
+    this.currentUser = username;
     return "Logged in as " + username + "\n";
   }
 
@@ -315,7 +315,7 @@ public class Query extends QueryAbstract {
   /* See QueryAbstract.java for javadoc */
   public String transaction_book(int itineraryId) {
     // TODO: YOUR CODE HERE
-    if (currentUser == null) return "Cannot book reservations, not logged in\n";
+    if (this.currentUser == null) return "Cannot book reservations, not logged in\n";
 
     if (itins.size() <= itineraryId) return "No such itinerary " + itineraryId + "\n";
 
@@ -355,7 +355,7 @@ public class Query extends QueryAbstract {
       }
 
       bookListReservationStatement.clearParameters();  
-      bookListReservationStatement.setString(1, currentUser);
+      bookListReservationStatement.setString(1, this.currentUser);
       
       res = bookListReservationStatement.executeQuery(); // might want to keep check some stuff here
       while (res.next()) {
@@ -475,6 +475,13 @@ public class Query extends QueryAbstract {
       conn.setAutoCommit(true); // End the transaction
       
     } catch (SQLException e) {
+      if (e instanceof SQLException && isDeadlock((SQLException)e)) {
+        try {
+            conn.rollback(); // Manually roll back the transaction
+            conn.setAutoCommit(true); // Reset auto-commit mode
+            return transaction_pay(reservationId);
+        } catch (SQLException ex) {}
+      }
       e.printStackTrace();
       return "Failed to pay for reservation " + reservationId + "\n";
     }
